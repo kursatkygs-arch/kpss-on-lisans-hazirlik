@@ -151,10 +151,62 @@
   .hoca-confirm-text{font-size:14px;color:var(--text);line-height:1.55;margin-bottom:20px;}
   .hoca-confirm-actions{display:flex;flex-direction:column;gap:8px;}
   .hoca-confirm-actions .btn{width:100%;}
+  .auth-gate{position:fixed;inset:0;background:var(--bg);z-index:500;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .auth-box{background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:28px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+  .auth-logo{font-size:18px;font-weight:700;text-align:center;margin-bottom:22px;color:var(--text);}
+  .auth-field{margin-bottom:12px;}
+  .auth-field label{display:block;font-size:12px;color:var(--text-dim);margin-bottom:4px;}
+  .auth-field input{width:100%;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:8px;padding:9px 12px;color:var(--text);font-family:'Inter',sans-serif;font-size:14px;box-sizing:border-box;}
+  .auth-error{color:var(--red);font-size:12px;margin:8px 0 0;min-height:14px;}
+  .auth-msg{color:var(--teal);font-size:12px;margin:8px 0 0;min-height:14px;line-height:1.5;}
+  .auth-switch{text-align:center;font-size:12px;color:var(--text-dim);margin-top:16px;}
+  .auth-switch a{color:var(--teal);cursor:pointer;text-decoration:underline;}
+  .auth-btn{width:100%;margin-top:6px;}
+  .pending-icon{font-size:40px;text-align:center;margin-bottom:12px;}
+  .pending-text{font-size:13px;color:var(--text-dim);text-align:center;line-height:1.6;margin-bottom:18px;}
+  .user-bar{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:8px;font-size:12px;color:var(--text-dim);}
+  .user-bar .btn{padding:5px 10px;font-size:11px;}
+  .admin-row{display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
+  .admin-row-info{font-size:13px;}
+  .admin-row-info .em{color:var(--text-faint);font-size:11px;display:block;margin-top:2px;}
 </style>
 </head>
 <body>
-<div class="wrap">
+
+<div class="auth-gate" id="authGate">
+  <div class="auth-box">
+    <div class="auth-logo">📚 KPSS Ön Lisans Hazırlık</div>
+    <div id="loginForm">
+      <div class="auth-field"><label>E-posta</label><input type="email" id="loginEmail" autocomplete="username"></div>
+      <div class="auth-field"><label>Şifre</label><input type="password" id="loginPassword" autocomplete="current-password"></div>
+      <div class="auth-error" id="loginError"></div>
+      <button class="btn primary auth-btn" id="loginBtn">Giriş yap</button>
+      <div class="auth-switch">Hesabın yok mu? <a id="showRegister">Üye ol</a></div>
+    </div>
+    <div id="registerForm" style="display:none;">
+      <div class="auth-field"><label>Ad Soyad</label><input type="text" id="regName" autocomplete="name"></div>
+      <div class="auth-field"><label>E-posta</label><input type="email" id="regEmail" autocomplete="username"></div>
+      <div class="auth-field"><label>Şifre (en az 6 karakter)</label><input type="password" id="regPassword" autocomplete="new-password"></div>
+      <div class="auth-error" id="regError"></div>
+      <div class="auth-msg" id="regMsg"></div>
+      <button class="btn primary auth-btn" id="registerBtn">Üye ol</button>
+      <div class="auth-switch">Zaten hesabın var mı? <a id="showLogin">Giriş yap</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="auth-gate" id="pendingGate" style="display:none;">
+  <div class="auth-box">
+    <div class="pending-icon">⏳</div>
+    <div class="auth-logo" style="margin-bottom:8px;">Hesabın onay bekliyor</div>
+    <div class="pending-text">Kaydın alındı. Yönetici onayladığında giriş yapabileceksin — onaylandığında tekrar giriş yapman yeterli.</div>
+    <button class="btn auth-btn" id="pendingLogoutBtn">Çıkış yap</button>
+  </div>
+</div>
+
+<div class="wrap" id="appRoot" style="display:none;">
+
+  <div class="user-bar" id="userBar"></div>
 
   <div class="ticket">
     <div class="ticket-notch top"></div>
@@ -178,6 +230,7 @@
     <button class="tab-btn active" data-tab="lesson">Bugünün Dersi</button>
     <button class="tab-btn" data-tab="dash">Panel</button>
     <button class="tab-btn" data-tab="quiz">Deneme</button>
+    <button class="tab-btn" data-tab="admin" id="adminTabBtn" style="display:none;">Admin</button>
   </div>
 
   <div class="panel active" id="panel-lesson">
@@ -223,6 +276,17 @@
     </div>
   </div>
 
+  <div class="panel" id="panel-admin">
+    <div class="card">
+      <div class="card-head"><div class="card-title">Bekleyen üyelik başvuruları</div></div>
+      <div id="adminPendingList"><div class="empty">Yükleniyor...</div></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><div class="card-title">Onaylı üyeler</div></div>
+      <div id="adminApprovedList"><div class="empty">Yükleniyor...</div></div>
+    </div>
+  </div>
+
 </div>
 
 <button class="ai-fab" id="aiFabBtn" title="Hocana sor">?</button>
@@ -255,6 +319,7 @@
   </div>
 </div>
 
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 <script>
 const EXAM_DATE = new Date('2026-10-04T09:00:00');
 
@@ -1588,6 +1653,7 @@ function getState(){
 let state = getState();
 function saveState(){
   try{ localStorage.setItem('kpss_state', JSON.stringify(state)); }catch(e){}
+  scheduleCloudSync();
 }
 if(!state.topicIndex) state.topicIndex = {};
 if(!state.topicDone) state.topicDone = {};
@@ -1596,6 +1662,203 @@ if(!state.viewStep) state.viewStep = {};
 if(!state.dailyProgress) state.dailyProgress = null;
 if(state.activeSubject === undefined) state.activeSubject = null;
 if(state.lastKarmaQuizDate === undefined) state.lastKarmaQuizDate = null;
+
+// ===== Kullanici sistemi (Supabase) =====
+const SUPABASE_URL = "https://aubmavsavzlkjvikttma.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_F84mMTaJteiGsp4r3CLppA_uyLbI0Lh";
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let currentUser = null;
+let currentProfile = null;
+let cloudSyncTimer = null;
+
+function scheduleCloudSync(){
+  if(!currentUser) return;
+  clearTimeout(cloudSyncTimer);
+  cloudSyncTimer = setTimeout(pushStateToCloud, 1500);
+}
+
+async function pushStateToCloud(){
+  if(!currentUser) return;
+  try{
+    await sb.from('user_progress').upsert({ user_id: currentUser.id, state: state, updated_at: new Date().toISOString() });
+  }catch(e){}
+}
+
+async function pullStateFromCloud(){
+  if(!currentUser) return false;
+  try{
+    const { data, error } = await sb.from('user_progress').select('state').eq('user_id', currentUser.id).maybeSingle();
+    if(!error && data && data.state && data.state.version === STATE_VERSION){
+      state = data.state;
+      if(!state.topicIndex) state.topicIndex = {};
+      if(!state.topicDone) state.topicDone = {};
+      if(!state.lessonProgress) state.lessonProgress = {};
+      if(!state.viewStep) state.viewStep = {};
+      if(!state.quizHistory) state.quizHistory = [];
+      if(!state.dailyProgress) state.dailyProgress = null;
+      if(state.activeSubject === undefined) state.activeSubject = null;
+      if(state.lastKarmaQuizDate === undefined) state.lastKarmaQuizDate = null;
+      try{ localStorage.setItem('kpss_state', JSON.stringify(state)); }catch(e){}
+      return true;
+    }
+  }catch(e){}
+  return false;
+}
+
+function showAuthGate(){
+  document.getElementById('authGate').style.display = 'flex';
+  document.getElementById('pendingGate').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'none';
+}
+function showPendingGate(){
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('pendingGate').style.display = 'flex';
+  document.getElementById('appRoot').style.display = 'none';
+}
+async function showApp(){
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('pendingGate').style.display = 'none';
+  document.getElementById('appRoot').style.display = '';
+  await pullStateFromCloud();
+  renderUserBar();
+  const adminBtn = document.getElementById('adminTabBtn');
+  if(currentProfile && currentProfile.is_admin){
+    adminBtn.style.display = '';
+    loadAdminPanel();
+  } else if(adminBtn){
+    adminBtn.style.display = 'none';
+  }
+  render();
+}
+
+function renderUserBar(){
+  const bar = document.getElementById('userBar');
+  if(!bar || !currentUser) return;
+  const name = (currentProfile && currentProfile.full_name) ? currentProfile.full_name : currentUser.email;
+  bar.innerHTML = `<span>${name}</span><button class="btn small" id="logoutBtn">Çıkış yap</button>`;
+  document.getElementById('logoutBtn').addEventListener('click', doLogout);
+}
+
+async function doLogout(){
+  await pushStateToCloud();
+  await sb.auth.signOut();
+  currentUser = null;
+  currentProfile = null;
+  showAuthGate();
+}
+
+async function handleSession(session){
+  currentUser = session.user;
+  const { data: profile, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).maybeSingle();
+  if(error || !profile){
+    showAuthGate();
+    return;
+  }
+  currentProfile = profile;
+  if(!profile.approved){
+    showPendingGate();
+  } else {
+    await showApp();
+  }
+}
+
+async function initAuth(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    await handleSession(session);
+  } else {
+    showAuthGate();
+  }
+  sb.auth.onAuthStateChange((event, changedSession) => {
+    if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      currentProfile = null;
+      showAuthGate();
+    }
+  });
+}
+
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if(!email || !password){ errEl.textContent = 'E-posta ve şifre gerekli.'; return; }
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = 'Giriş yapılıyor...';
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false; btn.textContent = 'Giriş yap';
+  if(error){
+    if(/confirm/i.test(error.message||'')){
+      errEl.textContent = 'E-posta onayı bekleniyor. (Admin: Supabase > Authentication > Sign In / Providers > Email > "Confirm email" seçeneğini kapatmalısın.)';
+    } else {
+      errEl.textContent = 'Giriş başarısız: ' + (error.message || 'e-posta veya şifre hatalı');
+    }
+    return;
+  }
+  await handleSession(data.session);
+}
+
+async function doRegister(){
+  const name = document.getElementById('regName').value.trim();
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+  const errEl = document.getElementById('regError');
+  const msgEl = document.getElementById('regMsg');
+  errEl.textContent = ''; msgEl.textContent = '';
+  if(!name || !email || !password){ errEl.textContent = 'Tüm alanları doldur.'; return; }
+  if(password.length < 6){ errEl.textContent = 'Şifre en az 6 karakter olmalı.'; return; }
+  const btn = document.getElementById('registerBtn');
+  btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+  const { data, error } = await sb.auth.signUp({ email, password, options: { data: { full_name: name } } });
+  btn.disabled = false; btn.textContent = 'Üye ol';
+  if(error){
+    errEl.textContent = 'Üye olma başarısız: ' + (error.message || 'bilinmeyen hata');
+    return;
+  }
+  msgEl.textContent = 'Kaydın alındı! Yönetici onayından sonra giriş yapabilirsin.';
+  document.getElementById('regName').value = '';
+  document.getElementById('regEmail').value = '';
+  document.getElementById('regPassword').value = '';
+}
+
+async function loadAdminPanel(){
+  const pendingEl = document.getElementById('adminPendingList');
+  const approvedEl = document.getElementById('adminApprovedList');
+  if(!pendingEl || !approvedEl) return;
+  const { data, error } = await sb.from('profiles').select('*').order('created_at', {ascending:false});
+  if(error || !data){
+    pendingEl.innerHTML = '<div class="empty">Yüklenemedi.</div>';
+    approvedEl.innerHTML = '';
+    return;
+  }
+  const pending = data.filter(p=>!p.approved);
+  const approved = data.filter(p=>p.approved);
+  pendingEl.innerHTML = pending.length ? pending.map(p=>`
+    <div class="admin-row">
+      <div class="admin-row-info">${p.full_name || '(isimsiz)'}<span class="em">${p.email} · ${new Date(p.created_at).toLocaleDateString('tr-TR')}</span></div>
+      <button class="btn primary small" data-approve="${p.id}">Onayla</button>
+    </div>`).join('') : '<div class="empty">Bekleyen başvuru yok.</div>';
+  approvedEl.innerHTML = approved.length ? approved.map(p=>`
+    <div class="admin-row">
+      <div class="admin-row-info">${p.full_name || '(isimsiz)'}${p.is_admin ? ' · <span style="color:var(--amber);">admin</span>' : ''}<span class="em">${p.email}</span></div>
+    </div>`).join('') : '<div class="empty">Henüz onaylı üye yok.</div>';
+  pendingEl.querySelectorAll('[data-approve]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      btn.disabled = true;
+      btn.textContent = 'Onaylanıyor...';
+      const id = btn.getAttribute('data-approve');
+      const { error } = await sb.from('profiles').update({ approved: true }).eq('id', id);
+      if(error){
+        btn.textContent = 'Hata, tekrar dene';
+        btn.disabled = false;
+      } else {
+        loadAdminPanel();
+      }
+    });
+  });
+}
 
 function allTopicIds(){
   const ids=[];
@@ -2558,7 +2821,22 @@ document.getElementById('aiAnalyzeBtn').addEventListener('click', ()=>{
   }
 });
 
-render();
+document.getElementById('showRegister').addEventListener('click', ()=>{
+  document.getElementById('loginForm').style.display = 'none';
+  document.getElementById('registerForm').style.display = '';
+});
+document.getElementById('showLogin').addEventListener('click', ()=>{
+  document.getElementById('registerForm').style.display = 'none';
+  document.getElementById('loginForm').style.display = '';
+});
+document.getElementById('loginBtn').addEventListener('click', doLogin);
+document.getElementById('registerBtn').addEventListener('click', doRegister);
+document.getElementById('pendingLogoutBtn').addEventListener('click', doLogout);
+document.getElementById('loginPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doLogin(); });
+document.getElementById('regPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doRegister(); });
+document.getElementById('adminTabBtn').addEventListener('click', loadAdminPanel);
+
+initAuth();
 </script>
 </body>
 </html>
