@@ -3,3 +3,4 @@
 .ghtoken
 .devicecode.json
 .claude/
+.gitconfig_local
