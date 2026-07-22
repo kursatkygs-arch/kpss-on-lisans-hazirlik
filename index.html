@@ -141,6 +141,13 @@
   .video-thumb-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
   .video-thumb-wrap .play-badge{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:52px;height:52px;border-radius:50%;background:rgba(20,20,24,.6);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;transition:background .15s;}
   .video-thumb-wrap:hover .play-badge{background:var(--red);}
+  .hoca-confirm-backdrop{position:fixed;inset:0;background:rgba(10,10,16,.82);display:none;align-items:center;justify-content:center;z-index:200;padding:20px;}
+  .hoca-confirm-backdrop.open{display:flex;}
+  .hoca-confirm-box{background:var(--surface);border:1px solid var(--amber);border-radius:14px;padding:24px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.55);text-align:center;}
+  .hoca-confirm-avatar{font-size:38px;margin-bottom:10px;}
+  .hoca-confirm-text{font-size:14px;color:var(--text);line-height:1.55;margin-bottom:20px;}
+  .hoca-confirm-actions{display:flex;flex-direction:column;gap:8px;}
+  .hoca-confirm-actions .btn{width:100%;}
 </style>
 </head>
 <body>
@@ -230,6 +237,17 @@
     </div>
     <div class="video-modal-player" id="videoModalPlayer"></div>
     <div class="video-modal-timer" id="videoModalTimer"></div>
+  </div>
+</div>
+
+<div class="hoca-confirm-backdrop" id="hocaConfirmBackdrop">
+  <div class="hoca-confirm-box">
+    <div class="hoca-confirm-avatar">👨‍🏫</div>
+    <div class="hoca-confirm-text" id="hocaConfirmText"></div>
+    <div class="hoca-confirm-actions">
+      <button class="btn primary" id="hocaConfirmStay">Tamam hocam, izlemeye devam ediyorum</button>
+      <button class="btn" id="hocaConfirmLeave">Yine de çık</button>
+    </div>
   </div>
 </div>
 
@@ -419,14 +437,12 @@ const QUIZ_BANK = [
   {q:"İlk Türk matbaası kim tarafından ve hangi yıl kurulmuştur?",opts:["İbrahim Müteferrika, 1727","Gutenberg, 1450","Said Efendi, 1700","Nevşehirli İbrahim Paşa, 1730"],a:0,subject:"Tarih",d:"orta"},
   {q:"Osmanlı Devleti'nde ilk anayasal nitelikli belge kabul edilen hangisidir?",opts:["Sened-i İttifak","Tanzimat Fermanı","Islahat Fermanı","Kanun-i Esasi"],a:0,subject:"Tarih",d:"zor"},
   {q:"Kanun-i Esasi hangi yıl ilan edilmiştir?",opts:["1839","1856","1876","1908"],a:2,subject:"Tarih",d:"orta"},
-  {q:"Mustafa Kemal, Samsun'a hangi tarihte çıkmıştır?",opts:["30 Ekim 1918","19 Mayıs 1919","23 Nisan 1920","15 Mayıs 1919"],a:1,subject:"Tarih",d:"kolay"},
   {q:"'Milli sınırlar içinde vatan bir bütündür, bölünemez' ilkesi ilk kez hangi kongrede kabul edilmiştir?",opts:["Amasya Genelgesi","Erzurum Kongresi","Sivas Kongresi","Son Osmanlı Mebusan Meclisi"],a:1,subject:"Tarih",d:"orta"},
   {q:"Misak-ı Millî hangi tarihte kabul edilmiştir?",opts:["22 Haziran 1919","23 Nisan 1920","28 Ocak 1920","16 Mart 1920"],a:2,subject:"Tarih",d:"orta"},
   {q:"Düzenli ordunun kazandığı ilk zafer hangisidir?",opts:["Sakarya Meydan Savaşı","I. İnönü Muharebesi","Büyük Taarruz","II. İnönü Muharebesi"],a:1,subject:"Tarih",d:"orta"},
   {q:"TBMM'nin uluslararası alanda imzaladığı ilk antlaşma hangisidir?",opts:["Moskova Antlaşması","Gümrü Antlaşması","Ankara Antlaşması","Mudanya Ateşkes Antlaşması"],a:1,subject:"Tarih",d:"zor"},
   {q:"Kurtuluş Savaşı'nda Güney Cephesi'nde hangi devletle mücadele edilmiştir?",opts:["Yunanistan","Ermenistan","Fransa","İngiltere"],a:2,subject:"Tarih",d:"kolay"},
   {q:"Mustafa Kemal'e 'Gazi' unvanı ve Mareşal rütbesi hangi zaferden sonra verilmiştir?",opts:["I. İnönü","Sakarya Meydan Savaşı","Büyük Taarruz","II. İnönü"],a:1,subject:"Tarih",d:"orta"},
-  {q:"Cumhuriyet hangi tarihte ilan edilmiştir?",opts:["1 Kasım 1922","29 Ekim 1923","3 Mart 1924","20 Nisan 1924"],a:1,subject:"Tarih",d:"kolay"},
   {q:"Saltanat ve halifelik kaldırılma sırası bakımından hangisi doğrudur?",opts:["Saltanat önce, halifelik sonra kaldırılmıştır","Halifelik önce, saltanat sonra kaldırılmıştır","İkisi aynı anda kaldırılmıştır","Sadece saltanat kaldırılmıştır"],a:0,subject:"Tarih",d:"orta"},
   {q:"Türk Medeni Kanunu hangi ülkeden örnek alınarak hazırlanmıştır?",opts:["Fransa","İsviçre","Almanya","İtalya"],a:1,subject:"Tarih",d:"orta"},
   {q:"Din ve devlet işlerinin ayrılmasını esas alan Atatürk ilkesi hangisidir?",opts:["Halkçılık","Devletçilik","Laiklik","Milliyetçilik"],a:2,subject:"Tarih",d:"kolay"},
@@ -439,10 +455,7 @@ const QUIZ_BANK = [
   {q:"Maki bitki örtüsü hangi iklimde görülür?",opts:["Karasal iklim","Karadeniz iklimi","Akdeniz iklimi","Step iklimi"],a:2,subject:"Coğrafya",d:"kolay"},
   {q:"Türkiye'nin en yüksek dağı hangisidir ve hangi bölgededir?",opts:["Erciyes, İç Anadolu","Ağrı Dağı, Doğu Anadolu","Kaçkar, Karadeniz","Uludağ, Marmara"],a:1,subject:"Coğrafya",d:"kolay"},
   {q:"Çukurova hangi tür bir ovadır?",opts:["Tektonik ova","Karstik ova","Delta ovası","Volkanik ova"],a:2,subject:"Coğrafya",d:"orta"},
-  {q:"Türkiye'de nüfus yoğunluğu en fazla olan bölge hangisidir?",opts:["Marmara","Ege","Akdeniz","İç Anadolu"],a:0,subject:"Coğrafya",d:"kolay"},
   {q:"Kırsal yerleşmelerde dağınık yerleşme dokusuna örnek hangisidir?",opts:["Köy","Mezra","Şehir","Kasaba"],a:1,subject:"Coğrafya",d:"orta"},
-  {q:"Türkiye'de çay tarımı en çok hangi ilde yapılır?",opts:["Trabzon","Rize","Giresun","Ordu"],a:1,subject:"Coğrafya",d:"kolay"},
-  {q:"Türkiye dünya fındık üretiminde kaçıncı sıradadır?",opts:["1.","2.","3.","5."],a:0,subject:"Coğrafya",d:"kolay"},
   {q:"GAP projesi hangi bölgede uygulanmaktadır?",opts:["Doğu Anadolu","Güneydoğu Anadolu","İç Anadolu","Akdeniz"],a:1,subject:"Coğrafya",d:"kolay"},
   {q:"Türkiye'de demir-çelik sanayisinin kurulduğu yerlerden biri hangisidir?",opts:["Karabük","Antalya","Trabzon","Konya"],a:0,subject:"Coğrafya",d:"orta"},
   {q:"Türkiye'nin ilk organize sanayi bölgesi hangi ilde kurulmuştur?",opts:["İstanbul","Kayseri","İzmir","Bursa"],a:1,subject:"Coğrafya",d:"zor"},
@@ -461,18 +474,11 @@ const QUIZ_BANK = [
   {q:"Hâlihazırda yürürlükte olan Türkiye Cumhuriyeti Anayasası hangi yıl kabul edilmiştir?",opts:["1961","1971","1982","1987"],a:2,subject:"Vatandaşlık",d:"kolay"},
   {q:"1982 Anayasası'na göre Türkiye Devleti'nin şekli nedir?",opts:["Krallık","Cumhuriyet","Federasyon","Konfederasyon"],a:1,subject:"Vatandaşlık",d:"kolay"},
   {q:"1982 Anayasası'nın değiştirilemez ve değiştirilmesi teklif dahi edilemez maddeleri hangileridir?",opts:["1, 2, 3, 4. maddeler","Sadece 1. madde","Başlangıç ve 1. madde","5, 6, 7. maddeler"],a:0,subject:"Vatandaşlık",d:"orta"},
-  {q:"TBMM kaç milletvekilinden oluşur?",opts:["550","600","650","500"],a:1,subject:"Vatandaşlık",d:"kolay"},
-  {q:"Türkiye'de milletvekili seçilme yaşı kaçtır?",opts:["18","21","25","30"],a:0,subject:"Vatandaşlık",d:"orta"},
   {q:"Cumhurbaşkanının görev süresi kaç yıldır?",opts:["4","5","6","7"],a:1,subject:"Vatandaşlık",d:"kolay"},
   {q:"Cumhurbaşkanlığı kararnamesi ile kanun çeliştiğinde hangisi uygulanır?",opts:["Cumhurbaşkanlığı kararnamesi","Kanun","İkisi de geçersiz sayılır","Anayasa Mahkemesi karar verir"],a:1,subject:"Vatandaşlık",d:"zor"},
   {q:"Adli yargının en üst denetim mercii hangisidir?",opts:["Danıştay","Yargıtay","Anayasa Mahkemesi","Sayıştay"],a:1,subject:"Vatandaşlık",d:"kolay"},
-  {q:"İdari yargının en üst denetim mercii hangisidir?",opts:["Yargıtay","Danıştay","Anayasa Mahkemesi","Uyuşmazlık Mahkemesi"],a:1,subject:"Vatandaşlık",d:"kolay"},
   {q:"Anayasa Mahkemesi üyeleri kaç yıl için görev yapar?",opts:["10 yıl","12 yıl","15 yıl","Ömür boyu"],a:1,subject:"Vatandaşlık",d:"orta"},
-  {q:"Kamu gelir ve giderlerini TBMM adına denetleyen kurum hangisidir?",opts:["Danıştay","Sayıştay","Yargıtay","Merkez Bankası"],a:1,subject:"Vatandaşlık",d:"orta"},
-  {q:"Temel hak ve özgürlükler ancak neyle sınırlandırılabilir?",opts:["Yönetmelikle","Genelgeyle","Kanunla","Cumhurbaşkanlığı kararnamesiyle"],a:2,subject:"Vatandaşlık",d:"orta"},
   {q:"'Eğitim hakkı' hangi hak kategorisine girer?",opts:["Kişi hakları","Sosyal ve ekonomik haklar","Siyasi haklar","Kültürel haklar"],a:1,subject:"Vatandaşlık",d:"orta"},
-  {q:"İlde merkezi idarenin en üst yöneticisi kimdir?",opts:["Belediye Başkanı","Vali","Kaymakam","Muhtar"],a:1,subject:"Vatandaşlık",d:"kolay"},
-  {q:"İlçede merkezi idarenin en üst yöneticisi kimdir?",opts:["Vali","Kaymakam","Belediye Başkanı","Muhtar"],a:1,subject:"Vatandaşlık",d:"kolay"},
   {q:"I. Yargı yetkisi Türk milleti adına kullanılır. II. Hâkimler, kanuna ve vicdani kanaatlerine göre karar verir. III. Mahkeme kararları hiçbir organ tarafından değiştirilemez ve geciktirilemez. Yukarıdaki bilgilerden hangileri doğrudur?",opts:["Yalnız I","I ve II","II ve III","I, II ve III"],a:3,subject:"Vatandaşlık",d:"zor"}
 ];
 
@@ -552,7 +558,7 @@ const TOPIC_CONTENT = {
   },
   "Türkçe::0": {
     videos: [
-      {id:"qSk5q2iPvWY", title:"36) KPSS Türkçe - Sözcükte Anlam - Kadir Gümüş - 2026", channel:"Benim Hocam"}
+      {id:"BGkHp9Ti1wI", title:"1) Sözcükte Anlam - 1 | Türkçe - Aker KARTAL - 2026", channel:"Aker KARTAL"}
     ],
     summary: [
       "Sınav önceliği: Sözcükte anlam doğrudan 1-2 soru getirir; en sık mecaz anlam ve sesteşlik ayrımı, ardından terim-yan anlam karışıklığı sorulur.",
@@ -570,8 +576,8 @@ const TOPIC_CONTENT = {
   },
   "Tarih::0": {
     videos: [
-      {id:"l51qG1kx9cY", title:"1) KPSS / AGS Tarih - İslamiyet Öncesi Türk Tarihi (I) - Ramazan YETGİN - 2026", channel:"Ramazan YETGİN"},
-      {id:"6YZLGNmqvQY", title:"2) KPSS / AGS Tarih - İslamiyet Öncesi Türk Tarihi (II) - Ramazan YETGİN - 2026", channel:"Ramazan YETGİN"}
+      {id:"TcLi7LjuYY4", title:"Tarih | İslamiyet Öncesi Türk Tarihi #1 | KPSS | Genel Kültür", channel:"Umut Öncül Akademi"},
+      {id:"Hs-_ctFBdGs", title:"Tarih | İslamiyet Öncesi Türk Tarihi #2 | KPSS | Genel Kültür", channel:"Umut Öncül Akademi"}
     ],
     summary: [
       "Sınav önceliği: Bu konudan genelde 1-2 soru gelir; en çok Orhun Abideleri, Mete Han'ın Onlu Sistemi ve Kavimler Göçü ile ilgili sorular çıkar.",
@@ -605,7 +611,7 @@ const TOPIC_CONTENT = {
   },
   "Vatandaşlık::0": {
     videos: [
-      {id:"TcfrXLlY-Ns", title:"1) KPSS Vatandaşlık - Hukukun Temel Kavramları - Genel Tekrar - Esra Özkan Karaoğlu - 2026", channel:"Esra Özkan Karaoğlu"},
+      {id:"lBPBEuSHiiw", title:"Vatandaşlık | Temel Hukuk Bilgileri #1 | KPSS | Genel Kültür", channel:"Umut Öncül Akademi"},
       {id:"s9lULsoz5TU", title:"1) KPSS Vatandaşlık - Temel Hukuk Kavramları - Sosyal Düzen Kuralları ve Hukukun Yaptırımları", channel:"Benim Hocam"}
     ],
     summary: [
@@ -956,7 +962,7 @@ const TOPIC_CONTENT = {
   },
   "Türkçe::2": {
     videos: [
-      {id:"oNUOLz0tLvU", title:"36) KPSS Türkçe - Paragraf - Kadir GÜMÜŞ - 2025", channel:"Kadir Gümüş"},
+      {id:"D_mmXq6YjwI", title:"17- 2025 KPSS - Türkçe - Paragraf (Metnin Dili ve Anlatımı) - Berk EKİCİ", channel:"Berk EKİCİ"},
       {id:"qVdpSA9DRqM", title:"1. PARAGRAFIN ALTIN KURALLARI - PARLA PARAGRAF (KADİR GÜMÜŞ) (2026)", channel:"Kadir Gümüş"}
     ],
     summary: [
@@ -1103,7 +1109,7 @@ const TOPIC_CONTENT = {
   },
   "Tarih::2": {
     videos: [
-      {id:"Jw17M0NS9FE", title:"17) KPSS / AGS Tarih - Osmanlı Devleti Kuruluş Dönemi (1299 - 1453) I - Ramazan YETGİN - 2026", channel:"Ramazan Yetgin"},
+      {id:"oWalowPdEPo", title:"5) Osmanlı Devleti Kuruluş Dönemi Genel Tekrar - KPSS Tarih 2026", channel:"Tarihane"},
       {id:"66YjT80s0lQ", title:"31) KPSS Tarih - Osmanlı Devleti Yükselme Dönemi 1 - Ramazan YETGİN - 2024", channel:"Ramazan Yetgin"}
     ],
     summary: [
@@ -1194,7 +1200,7 @@ const TOPIC_CONTENT = {
   },
   "Tarih::7": {
     videos: [
-      {id:"1p2BU43PZQ0", title:"45) KPSS / AGS Tarih - Atatürk İlkeleri - Ramazan YETGİN - 2026", channel:"Ramazan Yetgin"},
+      {id:"4G86tb-1vBM", title:"22) Atatürk İlke ve İnkılapları - KPSS Tarih Genel Tekrar", channel:"Tarihane"},
       {id:"zlqkgl--bBc", title:"69) KPSS Tarih - Atatürk İlke ve İnkılapları 1 - Ramazan YETGİN - 2025", channel:"Ramazan Yetgin"}
     ],
     summary: [
@@ -1212,7 +1218,7 @@ const TOPIC_CONTENT = {
   },
   "Tarih::8": {
     videos: [
-      {id:"_JLt4zl0V1M", title:"46) KPSS / AGS Tarih - Atatürk İnkılapları - Ramazan YETGİN - 2026", channel:"Ramazan Yetgin"},
+      {id:"4G86tb-1vBM", title:"22) Atatürk İlke ve İnkılapları - KPSS Tarih Genel Tekrar", channel:"Tarihane"},
       {id:"mh51y94c0tg", title:"70) KPSS Tarih - Atatürk İlke ve İnkılapları 2 - Ramazan YETGİN - 2024", channel:"Ramazan Yetgin"}
     ],
     summary: [
@@ -1322,7 +1328,8 @@ const TOPIC_CONTENT = {
   },
   "Coğrafya::4": {
     videos: [
-      {id:"CezP6W8oTZY", title:"35 - 2026 KPSS - Coğrafya - Tarımı Etkileyen Faktörler, Tarım Ürünleri - I - Alican DEMİR", channel:"Alican DEMİR"}
+      {id:"CezP6W8oTZY", title:"35 - 2026 KPSS - Coğrafya - Tarımı Etkileyen Faktörler, Tarım Ürünleri - I - Alican DEMİR", channel:"Alican DEMİR"},
+      {id:"8fwKjH2XDdU", title:"10dk'da TÜRKİYE'DE TARIM 1 - Talha DOĞAN", channel:"Tonguç Akademi"}
     ],
     summary: [
       "Tarım ve hayvancılık konusu, ürün-iklim-bölge eşleştirmeleri şeklinde soru tipleriyle KPSS coğrafyasında sık çıkan bir konudur.",
@@ -1362,7 +1369,7 @@ const TOPIC_CONTENT = {
   },
   "Coğrafya::6": {
     videos: [
-      {id:"xDxZPO071FM", title:"32) KPSS - MEB / AGS Coğrafya - Türkiye'de Ulaşım - Ticaret - Turizm - Bayram MERAL - 2026", channel:"Bayram MERAL"},
+      {id:"DZiAHUAYjyw", title:"45-2026-KPSS&AGS COĞRAFYA - Türkiye'de Ulaşım 1 - Mehmet Eğit", channel:"Mehmet Eğit"},
       {id:"vwzecbfoSwk", title:"31)MEB - AGS - KPSS Coğrafya - Türkiye'de Ulaşım - Bayram MERAL -2025", channel:"Bayram MERAL"}
     ],
     summary: [
@@ -1862,6 +1869,27 @@ function tickModalTimer(){
     el.textContent = 'Devam etmek için en az ' + formatRemaining(remaining*1000) + ' daha izle';
     el.classList.remove('ready');
   }
+}
+
+function attemptCloseVideoModal(){
+  const incomplete = modalCurrentVideoId && !videoWatchState.watchedIds.has(modalCurrentVideoId);
+  if(incomplete){
+    showHocaConfirm('Bu videoyu tamamlamadan çıkmak mı istiyorsun? İzleme süren kaydedilir, kaldığın yerden devam edebilirsin ama önce tamamlaman gerekiyor.');
+    return;
+  }
+  closeVideoModal();
+}
+
+function showHocaConfirm(text){
+  const box = document.getElementById('hocaConfirmText');
+  const backdrop = document.getElementById('hocaConfirmBackdrop');
+  if(box) box.textContent = text;
+  if(backdrop) backdrop.classList.add('open');
+}
+
+function hideHocaConfirm(){
+  const backdrop = document.getElementById('hocaConfirmBackdrop');
+  if(backdrop) backdrop.classList.remove('open');
 }
 
 function closeVideoModal(){
@@ -2447,9 +2475,14 @@ document.getElementById('aiCloseBtn').addEventListener('click', ()=>{
   document.getElementById('aiPanel').classList.remove('open');
 });
 
-document.getElementById('videoModalClose').addEventListener('click', closeVideoModal);
+document.getElementById('videoModalClose').addEventListener('click', attemptCloseVideoModal);
 document.getElementById('videoModalBackdrop').addEventListener('click', (e)=>{
-  if(e.target.id === 'videoModalBackdrop') closeVideoModal();
+  if(e.target.id === 'videoModalBackdrop') attemptCloseVideoModal();
+});
+document.getElementById('hocaConfirmStay').addEventListener('click', hideHocaConfirm);
+document.getElementById('hocaConfirmLeave').addEventListener('click', ()=>{
+  hideHocaConfirm();
+  closeVideoModal();
 });
 document.getElementById('aiAskBtn').addEventListener('click', ()=>{
   const q = document.getElementById('aiQuestion').value.trim();
