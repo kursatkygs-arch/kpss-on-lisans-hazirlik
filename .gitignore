@@ -1,0 +1,5 @@
+﻿tools/
+.ghconfig/
+.ghtoken
+.devicecode.json
+.claude/
