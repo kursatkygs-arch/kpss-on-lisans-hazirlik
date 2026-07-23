@@ -16,25 +16,22 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);background-image:radial-gradient(circle at 15% 0%, rgba(45,224,196,.08), transparent 45%),radial-gradient(circle at 85% 15%, rgba(255,178,56,.07), transparent 40%);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 60px;}
+  .wrap{max-width:960px;margin:0 auto;padding:28px 20px 60px;}
   h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;}
   .mono{font-family:'IBM Plex Mono',monospace;}
   .ticket{position:relative;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;display:flex;overflow:hidden;margin-bottom:24px;}
-  .ticket-main{flex:1;padding:22px 24px;border-right:2px dashed var(--border-strong);position:relative;}
+  .ticket-main{flex:1;padding:22px 24px;position:relative;}
   .ticket-eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);font-weight:600;}
   .ticket-title{font-size:19px;font-weight:700;margin-top:4px;color:var(--text);}
   .ticket-sub{font-size:13px;color:var(--text-dim);margin-top:6px;}
   .ticket-barcode{margin-top:16px;display:flex;gap:2px;height:26px;align-items:flex-end;}
   .ticket-barcode div{background:var(--border-strong);width:3px;}
   .motivation-line{text-align:center;font-size:13px;font-style:italic;color:var(--text-dim);padding:2px 12px 22px;line-height:1.5;}
-  .ticket-stub{width:150px;padding:22px 16px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--surface-2);}
-  .stub-num{font-size:40px;font-weight:700;color:var(--teal);line-height:1;font-family:'IBM Plex Mono',monospace;}
-  .stub-label{font-size:11px;color:var(--text-dim);margin-top:6px;letter-spacing:.05em;}
-  .stub-days{font-size:11px;color:var(--text-faint);margin-top:4px;}
-  .stub-date{margin-top:12px;font-size:11px;color:var(--text-faint);border-top:1px solid var(--border);padding-top:8px;width:100%;}
-  .ticket-notch{position:absolute;width:14px;height:14px;background:var(--bg);border-radius:50%;right:150px;margin-right:-7px;}
-  .ticket-notch.top{top:-7px;}
-  .ticket-notch.bottom{bottom:-7px;}
+  .cal-countdown{display:flex;flex-direction:column;align-items:center;text-align:center;padding-bottom:14px;margin-bottom:14px;border-bottom:1px solid var(--border);}
+  .stub-num{font-size:32px;font-weight:700;color:var(--teal);line-height:1;font-family:'IBM Plex Mono',monospace;}
+  .stub-label{font-size:11px;color:var(--text-dim);letter-spacing:.05em;margin-top:4px;}
+  .stub-days{font-size:11px;color:var(--text-faint);margin-top:2px;}
+  .stub-date{font-size:10px;color:var(--text-faint);margin-top:6px;}
   .tabs{display:flex;gap:6px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0;}
   .tab-btn{background:none;border:none;color:var(--text-dim);font-family:'Inter',sans-serif;font-size:14px;font-weight:500;padding:10px 4px;cursor:pointer;border-bottom:2px solid transparent;margin-right:14px;}
   .tab-btn.active{color:var(--text);border-bottom:2px solid var(--amber);}
@@ -195,8 +192,8 @@
   .deneme-cal-legend .dot.deneme{background:var(--amber);}
   .deneme-cal-legend .dot.today{background:var(--teal);}
   .deneme-cal-legend .dot.exam{background:var(--red);}
-  @media (min-width:1680px){
-    .deneme-calendar{position:fixed;top:28px;right:24px;width:230px;margin-bottom:0;z-index:10;max-height:calc(100vh - 56px);overflow-y:auto;}
+  @media (min-width:1460px){
+    .deneme-calendar{position:fixed;top:28px;right:16px;width:210px;margin-bottom:0;z-index:10;max-height:calc(100vh - 56px);overflow-y:auto;}
   }
 </style>
 </head>
@@ -258,24 +255,22 @@
   <div class="user-bar" id="userBar"></div>
 
   <div class="ticket">
-    <div class="ticket-notch top"></div>
-    <div class="ticket-notch bottom"></div>
     <div class="ticket-main">
       <div class="ticket-eyebrow">Sınav giriş bilgisi</div>
       <div class="ticket-title">KPSS Ön Lisans 2026</div>
       <div class="ticket-sub" id="examDateText">4 Ekim 2026</div>
       <div class="ticket-barcode" id="barcode"></div>
     </div>
-    <div class="ticket-stub">
+  </div>
+  <div class="motivation-line" id="motivationLine"></div>
+
+  <div class="card deneme-calendar" id="denemeCalendarCard">
+    <div class="cal-countdown">
       <div class="stub-num" id="daysLeft">--</div>
       <div class="stub-label">HAFTA VAR</div>
       <div class="stub-days" id="daysLeftSub"></div>
       <div class="stub-date mono" id="todayText"></div>
     </div>
-  </div>
-  <div class="motivation-line" id="motivationLine"></div>
-
-  <div class="card deneme-calendar" id="denemeCalendarCard">
     <div class="card-head"><div class="card-title">Deneme takvimi</div></div>
     <div id="denemeCalendarNote" class="deneme-cal-note"></div>
     <div class="deneme-cal-nav">
