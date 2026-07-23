@@ -169,6 +169,21 @@
   .admin-row{display:flex;justify-content:space-between;align-items:center;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:8px;}
   .admin-row-info{font-size:13px;}
   .admin-row-info .em{color:var(--text-faint);font-size:11px;display:block;margin-top:2px;}
+  .deneme-calendar{margin-bottom:20px;}
+  .deneme-cal-note{font-size:12px;color:var(--text-dim);line-height:1.5;margin-bottom:12px;}
+  .deneme-cal-note.today{color:var(--amber);font-weight:600;}
+  .deneme-cal-strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;}
+  .deneme-cal-day{flex:0 0 auto;width:38px;text-align:center;padding:6px 2px;border-radius:8px;background:var(--surface-2);border:1px solid var(--border);}
+  .deneme-cal-day .dow{font-size:9px;color:var(--text-faint);text-transform:uppercase;}
+  .deneme-cal-day .num{font-size:13px;font-weight:600;color:var(--text);margin-top:2px;}
+  .deneme-cal-day.is-today{border-color:var(--teal);}
+  .deneme-cal-day.is-deneme{background:rgba(255,178,56,.15);border-color:var(--amber);}
+  .deneme-cal-day.is-deneme .num{color:var(--amber);}
+  @media (min-width:1420px){
+    .deneme-calendar{position:fixed;top:24px;right:24px;width:230px;margin-bottom:0;z-index:10;}
+    .deneme-cal-strip{flex-wrap:wrap;}
+    .deneme-cal-day{width:44px;}
+  }
 </style>
 </head>
 <body>
@@ -245,6 +260,12 @@
     </div>
   </div>
   <div class="motivation-line" id="motivationLine"></div>
+
+  <div class="card deneme-calendar" id="denemeCalendarCard">
+    <div class="card-head"><div class="card-title">Deneme takvimi</div></div>
+    <div id="denemeCalendarNote" class="deneme-cal-note"></div>
+    <div id="denemeCalendarStrip" class="deneme-cal-strip"></div>
+  </div>
 
   <div class="tabs">
     <button class="tab-btn active" data-tab="lesson">Bugünün Dersi</button>
@@ -2001,6 +2022,51 @@ function renderMotivation(){
   el.textContent = `"${quote}"`;
 }
 
+const DAY_SHORT = ["Pz","Pt","Sa","Ça","Pe","Cu","Ct"];
+function renderDenemeCalendar(){
+  const noteEl = document.getElementById('denemeCalendarNote');
+  const stripEl = document.getElementById('denemeCalendarStrip');
+  if(!noteEl || !stripEl) return;
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  let nextDeneme;
+  if(!state.lastKarmaQuizDate){
+    nextDeneme = new Date(today);
+  } else {
+    const last = new Date(state.lastKarmaQuizDate); last.setHours(0,0,0,0);
+    nextDeneme = new Date(last);
+    nextDeneme.setDate(nextDeneme.getDate() + DENEME_INTERVAL_DAYS);
+    if(nextDeneme < today) nextDeneme = new Date(today);
+  }
+
+  const isToday = nextDeneme.getTime() === today.getTime();
+  if(isToday){
+    noteEl.textContent = '🎯 Bugün deneme günü! Provanı çözmeyi unutma.';
+    noteEl.classList.add('today');
+  } else {
+    const diffDays = Math.round((nextDeneme - today)/86400000);
+    noteEl.textContent = `Sıradaki deneme: ${diffDays} gün sonra (${nextDeneme.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'})})`;
+    noteEl.classList.remove('today');
+  }
+
+  const denemeDays = new Set();
+  let d = new Date(nextDeneme);
+  for(let i=0;i<5;i++){
+    denemeDays.add(d.toDateString());
+    d = new Date(d); d.setDate(d.getDate() + DENEME_INTERVAL_DAYS);
+  }
+
+  let html = '';
+  for(let i=0;i<12;i++){
+    const day = new Date(today); day.setDate(day.getDate()+i);
+    let cls = 'deneme-cal-day';
+    if(day.getTime()===today.getTime()) cls += ' is-today';
+    if(denemeDays.has(day.toDateString())) cls += ' is-deneme';
+    html += `<div class="${cls}"><div class="dow">${DAY_SHORT[day.getDay()]}</div><div class="num">${day.getDate()}</div></div>`;
+  }
+  stripEl.innerHTML = html;
+}
+
 function renderWeekly(){
   const el = document.getElementById('dashWeekly');
   const todayCounts = getTodayCounts();
@@ -2839,6 +2905,7 @@ function switchTab(tab){
 
 function render(){
   renderHero();
+  renderDenemeCalendar();
   renderLesson();
   renderDashboard();
   renderQuiz();
