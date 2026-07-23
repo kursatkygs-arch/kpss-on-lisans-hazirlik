@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KPSS Ön Lisans Hazırlık</title>
+<link rel="icon" type="image/png" href="icon-192.png">
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#191B2E">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -335,6 +336,14 @@
       <div class="stat"><div class="stat-label">Deneme ortalaması</div><div class="stat-val" id="statQuiz">–</div></div>
       <div class="stat"><div class="stat-label">Ortalama net</div><div class="stat-val" id="statNet">–</div></div>
       <div class="stat"><div class="stat-label">Zayıf ders</div><div class="stat-val" id="statWeak" style="font-size:15px;">–</div></div>
+    </div>
+    <div class="card" id="onboardingCard" style="display:none;">
+      <div class="card-head"><div class="card-title">Uygulama nasıl çalışır?</div></div>
+      <ul style="font-size:13px;color:var(--text-dim);line-height:1.7;margin:0;padding-left:18px;">
+        <li><strong style="color:var(--text)">Bugünün Dersi</strong> sekmesinde günlük hedefin var: video izle → konu anlatımını oku → 20 soruluk testi çöz.</li>
+        <li><strong style="color:var(--text)">Deneme</strong> sekmesinde 3 günde bir, 120 soruluk gerçek formatta prova sınavı çözebilirsin. Yanlış yaptıkların otomatik birikir, istediğin an tekrar çözebilirsin.</li>
+        <li>Sol taraftaki panelde ilerlemeni, sağ taraftaki takvimde deneme ve sınav gününü takip edebilirsin.</li>
+      </ul>
     </div>
     <div class="card">
       <div class="card-head"><div class="card-title">Günlük hedef çizelgesi</div><div class="card-meta" id="dashTargetMeta"></div></div>
@@ -2229,6 +2238,10 @@ function renderDashboard(){
   const pct = ids.length ? Math.round(done/ids.length*100) : 0;
   document.getElementById('statOverall').textContent = pct+'%';
   document.getElementById('lpOverall').textContent = pct+'%';
+  const onboardEl = document.getElementById('onboardingCard');
+  if(onboardEl){
+    onboardEl.style.display = (done === 0 && state.quizHistory.length === 0) ? '' : 'none';
+  }
   const streak = computeStreak();
   document.getElementById('lpStreak').textContent = streak + (streak>0 ? ' 🔥' : '');
 
