@@ -16,7 +16,7 @@
   }
   *{box-sizing:border-box;}
   body{margin:0;background:var(--bg);background-image:radial-gradient(circle at 15% 0%, rgba(45,224,196,.08), transparent 45%),radial-gradient(circle at 85% 15%, rgba(255,178,56,.07), transparent 40%);color:var(--text);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;}
-  .wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px;}
+  .wrap{max-width:1040px;margin:0 auto;padding:28px 20px 60px;}
   h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;}
   .mono{font-family:'IBM Plex Mono',monospace;}
   .ticket{position:relative;background:var(--surface);border:1px solid var(--border-strong);border-radius:10px;display:flex;overflow:hidden;margin-bottom:24px;}
@@ -105,7 +105,7 @@
   .lesson-progress{font-size:12px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;}
   .section-label{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);font-weight:600;margin:22px 0 10px;display:flex;align-items:center;gap:8px;}
   .section-label .num{width:20px;height:20px;border-radius:50%;background:var(--surface-3);color:var(--text);display:flex;align-items:center;justify-content:center;font-size:11px;font-family:'IBM Plex Mono',monospace;}
-  .video-grid{display:flex;flex-direction:column;gap:18px;}
+  .video-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px;}
   .video-embed-wrap{display:block;}
   .watched-badge{position:absolute;top:8px;right:8px;background:var(--teal);color:#062A24;font-size:11px;font-weight:700;letter-spacing:.03em;padding:4px 9px;border-radius:6px;align-items:center;gap:4px;z-index:2;}
   .video-title{font-size:13px;color:var(--text-dim);margin-top:6px;}
@@ -182,6 +182,7 @@
       <div class="auth-error" id="loginError"></div>
       <button class="btn primary auth-btn" id="loginBtn">Giriş yap</button>
       <div class="auth-switch">Hesabın yok mu? <a id="showRegister">Üye ol</a></div>
+      <div class="auth-switch">Şifreni mi unuttun? <a id="showReset">Şifremi sıfırla</a></div>
     </div>
     <div id="registerForm" style="display:none;">
       <div class="auth-field"><label>Ad Soyad</label><input type="text" id="regName" autocomplete="name"></div>
@@ -192,6 +193,25 @@
       <button class="btn primary auth-btn" id="registerBtn">Üye ol</button>
       <div class="auth-switch">Zaten hesabın var mı? <a id="showLogin">Giriş yap</a></div>
     </div>
+    <div id="resetForm" style="display:none;">
+      <div style="font-size:12px;color:var(--text-dim);margin-bottom:14px;line-height:1.5;">E-posta adresini gir, sana şifreni yenileyebileceğin bir link gönderelim.</div>
+      <div class="auth-field"><label>E-posta</label><input type="email" id="resetEmail" autocomplete="username"></div>
+      <div class="auth-error" id="resetError"></div>
+      <div class="auth-msg" id="resetMsg"></div>
+      <button class="btn primary auth-btn" id="resetBtn">Sıfırlama linki gönder</button>
+      <div class="auth-switch">Hatırladın mı? <a id="showLoginFromReset">Giriş yap</a></div>
+    </div>
+  </div>
+</div>
+
+<div class="auth-gate" id="newPasswordGate" style="display:none;">
+  <div class="auth-box">
+    <div class="auth-logo">🔑 Yeni şifre belirle</div>
+    <div class="auth-field"><label>Yeni şifre (en az 6 karakter)</label><input type="password" id="newPassword1" autocomplete="new-password"></div>
+    <div class="auth-field"><label>Yeni şifre (tekrar)</label><input type="password" id="newPassword2" autocomplete="new-password"></div>
+    <div class="auth-error" id="newPasswordError"></div>
+    <div class="auth-msg" id="newPasswordMsg"></div>
+    <button class="btn primary auth-btn" id="newPasswordBtn">Şifreyi kaydet</button>
   </div>
 </div>
 
@@ -1709,16 +1729,25 @@ async function pullStateFromCloud(){
 function showAuthGate(){
   document.getElementById('authGate').style.display = 'flex';
   document.getElementById('pendingGate').style.display = 'none';
+  document.getElementById('newPasswordGate').style.display = 'none';
   document.getElementById('appRoot').style.display = 'none';
 }
 function showPendingGate(){
   document.getElementById('authGate').style.display = 'none';
   document.getElementById('pendingGate').style.display = 'flex';
+  document.getElementById('newPasswordGate').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'none';
+}
+function showNewPasswordGate(){
+  document.getElementById('authGate').style.display = 'none';
+  document.getElementById('pendingGate').style.display = 'none';
+  document.getElementById('newPasswordGate').style.display = 'flex';
   document.getElementById('appRoot').style.display = 'none';
 }
 async function showApp(){
   document.getElementById('authGate').style.display = 'none';
   document.getElementById('pendingGate').style.display = 'none';
+  document.getElementById('newPasswordGate').style.display = 'none';
   document.getElementById('appRoot').style.display = '';
   await pullStateFromCloud();
   renderUserBar();
@@ -1763,20 +1792,70 @@ async function handleSession(session){
   }
 }
 
+let inPasswordRecovery = false;
+
 async function initAuth(){
+  sb.auth.onAuthStateChange((event, changedSession) => {
+    if(event === 'PASSWORD_RECOVERY'){
+      inPasswordRecovery = true;
+      showNewPasswordGate();
+    } else if(event === 'SIGNED_OUT'){
+      currentUser = null;
+      currentProfile = null;
+      showAuthGate();
+    }
+  });
+  const { data: { session } } = await sb.auth.getSession();
+  if(inPasswordRecovery) return;
+  if(session){
+    await handleSession(session);
+  } else {
+    showAuthGate();
+  }
+}
+
+async function doRequestReset(){
+  const email = document.getElementById('resetEmail').value.trim();
+  const errEl = document.getElementById('resetError');
+  const msgEl = document.getElementById('resetMsg');
+  errEl.textContent = ''; msgEl.textContent = '';
+  if(!email){ errEl.textContent = 'E-posta gerekli.'; return; }
+  const btn = document.getElementById('resetBtn');
+  btn.disabled = true; btn.textContent = 'Gönderiliyor...';
+  const redirectTo = window.location.href.split('#')[0];
+  const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+  btn.disabled = false; btn.textContent = 'Sıfırlama linki gönder';
+  if(error){
+    errEl.textContent = 'Gönderilemedi: ' + (error.message || 'bilinmeyen hata');
+    return;
+  }
+  msgEl.textContent = 'E-postana bir link gönderdik. Gelen kutunu (ve spam klasörünü) kontrol et.';
+}
+
+async function doSetNewPassword(){
+  const p1 = document.getElementById('newPassword1').value;
+  const p2 = document.getElementById('newPassword2').value;
+  const errEl = document.getElementById('newPasswordError');
+  const msgEl = document.getElementById('newPasswordMsg');
+  errEl.textContent = ''; msgEl.textContent = '';
+  if(!p1 || p1.length < 6){ errEl.textContent = 'Şifre en az 6 karakter olmalı.'; return; }
+  if(p1 !== p2){ errEl.textContent = 'Şifreler eşleşmiyor.'; return; }
+  const btn = document.getElementById('newPasswordBtn');
+  btn.disabled = true; btn.textContent = 'Kaydediliyor...';
+  const { data, error } = await sb.auth.updateUser({ password: p1 });
+  btn.disabled = false; btn.textContent = 'Şifreyi kaydet';
+  if(error){
+    errEl.textContent = 'Kaydedilemedi: ' + (error.message || 'bilinmeyen hata');
+    return;
+  }
+  inPasswordRecovery = false;
+  msgEl.textContent = 'Şifren güncellendi, giriş yapılıyor...';
   const { data: { session } } = await sb.auth.getSession();
   if(session){
     await handleSession(session);
   } else {
     showAuthGate();
   }
-  sb.auth.onAuthStateChange((event, changedSession) => {
-    if(event === 'SIGNED_OUT'){
-      currentUser = null;
-      currentProfile = null;
-      showAuthGate();
-    }
-  });
 }
 
 async function doLogin(){
@@ -2821,19 +2900,24 @@ document.getElementById('aiAnalyzeBtn').addEventListener('click', ()=>{
   }
 });
 
-document.getElementById('showRegister').addEventListener('click', ()=>{
-  document.getElementById('loginForm').style.display = 'none';
-  document.getElementById('registerForm').style.display = '';
-});
-document.getElementById('showLogin').addEventListener('click', ()=>{
-  document.getElementById('registerForm').style.display = 'none';
-  document.getElementById('loginForm').style.display = '';
-});
+function showAuthForm(id){
+  ['loginForm','registerForm','resetForm'].forEach(f=>{
+    document.getElementById(f).style.display = (f===id) ? '' : 'none';
+  });
+}
+document.getElementById('showRegister').addEventListener('click', ()=>showAuthForm('registerForm'));
+document.getElementById('showLogin').addEventListener('click', ()=>showAuthForm('loginForm'));
+document.getElementById('showReset').addEventListener('click', ()=>showAuthForm('resetForm'));
+document.getElementById('showLoginFromReset').addEventListener('click', ()=>showAuthForm('loginForm'));
 document.getElementById('loginBtn').addEventListener('click', doLogin);
 document.getElementById('registerBtn').addEventListener('click', doRegister);
+document.getElementById('resetBtn').addEventListener('click', doRequestReset);
+document.getElementById('newPasswordBtn').addEventListener('click', doSetNewPassword);
 document.getElementById('pendingLogoutBtn').addEventListener('click', doLogout);
 document.getElementById('loginPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doLogin(); });
 document.getElementById('regPassword').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doRegister(); });
+document.getElementById('resetEmail').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doRequestReset(); });
+document.getElementById('newPassword2').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doSetNewPassword(); });
 document.getElementById('adminTabBtn').addEventListener('click', loadAdminPanel);
 
 initAuth();
