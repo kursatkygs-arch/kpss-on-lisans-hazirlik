@@ -192,8 +192,19 @@
   .deneme-cal-legend .dot.deneme{background:var(--amber);}
   .deneme-cal-legend .dot.today{background:var(--teal);}
   .deneme-cal-legend .dot.exam{background:var(--red);}
+  .left-panel{margin-bottom:20px;}
+  .lp-stats{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+  .lp-stat{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center;}
+  .lp-stat-val{font-size:18px;font-weight:700;color:var(--teal);font-family:'IBM Plex Mono',monospace;}
+  .lp-stat-label{font-size:10px;color:var(--text-dim);margin-top:2px;}
+  .lp-subjects{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;}
+  .lp-subj-name{font-size:11px;color:var(--text-dim);display:flex;justify-content:space-between;margin-bottom:3px;}
+  .lp-subj-bar{height:6px;background:var(--surface-3);border-radius:4px;overflow:hidden;}
+  .lp-subj-fill{height:100%;border-radius:4px;}
+  #lpResumeBtn{width:100%;}
   @media (min-width:1460px){
     .deneme-calendar{position:fixed;top:28px;right:16px;width:210px;margin-bottom:0;z-index:10;max-height:calc(100vh - 56px);overflow-y:auto;}
+    .left-panel{position:fixed;top:28px;left:16px;width:210px;margin-bottom:0;z-index:10;max-height:calc(100vh - 56px);overflow-y:auto;}
   }
 </style>
 </head>
@@ -253,6 +264,17 @@
 <div class="wrap" id="appRoot" style="display:none;">
 
   <div class="user-bar" id="userBar"></div>
+
+  <div class="card left-panel" id="leftPanelCard">
+    <div class="card-head"><div class="card-title">Hızlı Bakış</div></div>
+    <div class="lp-stats">
+      <div class="lp-stat"><div class="lp-stat-val" id="lpOverall">0%</div><div class="lp-stat-label">Toplam ilerleme</div></div>
+      <div class="lp-stat"><div class="lp-stat-val" id="lpNet">–</div><div class="lp-stat-label">Ortalama net</div></div>
+      <div class="lp-stat"><div class="lp-stat-val" id="lpWeak" style="font-size:13px;">–</div><div class="lp-stat-label">Zayıf ders</div></div>
+    </div>
+    <div class="lp-subjects" id="lpSubjects"></div>
+    <button class="btn primary small" id="lpResumeBtn">Kaldığın yerden devam et</button>
+  </div>
 
   <div class="ticket">
     <div class="ticket-main">
@@ -2188,6 +2210,7 @@ function renderDashboard(){
   const done = ids.filter(id=>state.topicDone[id]).length;
   const pct = ids.length ? Math.round(done/ids.length*100) : 0;
   document.getElementById('statOverall').textContent = pct+'%';
+  document.getElementById('lpOverall').textContent = pct+'%';
 
   const hist = state.quizHistory;
   if(hist.length){
@@ -2201,15 +2224,20 @@ function renderDashboard(){
   if(withNet.length){
     const avgNet = Math.round((withNet.reduce((s,h)=>s+h.net,0)/withNet.length)*100)/100;
     document.getElementById('statNet').textContent = avgNet;
+    document.getElementById('lpNet').textContent = avgNet;
   } else {
     document.getElementById('statNet').textContent = '–';
+    document.getElementById('lpNet').textContent = '–';
   }
 
   const subjAcc = computeSubjectAccuracy();
   const weakest = getWeakestSubject(subjAcc);
-  document.getElementById('statWeak').textContent = weakest ? weakest.subject+' (%'+weakest.pct+')' : '–';
+  const weakText = weakest ? weakest.subject+' (%'+weakest.pct+')' : '–';
+  document.getElementById('statWeak').textContent = weakText;
+  document.getElementById('lpWeak').textContent = weakText;
 
   let subjHtml='';
+  let lpSubjHtml='';
   for(const subj in TOPICS){
     const topics = TOPICS[subj];
     const d = topics.filter((t,i)=>state.topicDone[subj+'::'+i]).length;
@@ -2221,8 +2249,13 @@ function renderDashboard(){
       </div>
       <div class="bar-track"><div class="bar-fill" style="width:${p}%;background:${color};"></div></div>
     </div>`;
+    lpSubjHtml += `<div>
+      <div class="lp-subj-name"><span>${subj}</span><span>${p}%</span></div>
+      <div class="lp-subj-bar"><div class="lp-subj-fill" style="width:${p}%;background:${color};"></div></div>
+    </div>`;
   }
   document.getElementById('dashSubjects').innerHTML = subjHtml;
+  document.getElementById('lpSubjects').innerHTML = lpSubjHtml;
 
   renderChart();
   renderAccuracy(subjAcc);
@@ -3082,6 +3115,10 @@ document.getElementById('regPassword').addEventListener('keydown', (e)=>{ if(e.k
 document.getElementById('resetEmail').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doRequestReset(); });
 document.getElementById('newPassword2').addEventListener('keydown', (e)=>{ if(e.key==='Enter') doSetNewPassword(); });
 document.getElementById('adminTabBtn').addEventListener('click', loadAdminPanel);
+document.getElementById('lpResumeBtn').addEventListener('click', ()=>{
+  switchTab('lesson');
+  renderLesson();
+});
 document.getElementById('denemeCalPrev').addEventListener('click', ()=>changeCalendarMonth(-1));
 document.getElementById('denemeCalNext').addEventListener('click', ()=>changeCalendarMonth(1));
 document.getElementById('denemeCalTodayLink').addEventListener('click', ()=>{
