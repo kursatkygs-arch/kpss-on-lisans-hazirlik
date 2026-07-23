@@ -1,0 +1,15 @@
+{
+  "name": "KPSS Ön Lisans Hazırlık",
+  "short_name": "KPSS Hazırlık",
+  "description": "KPSS Ön Lisans sınavına hazırlık uygulaması",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#191B2E",
+  "theme_color": "#191B2E",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

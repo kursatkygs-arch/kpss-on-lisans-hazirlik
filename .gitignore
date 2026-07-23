@@ -5,3 +5,4 @@
 .claude/
 .gitconfig_local
 video_check.txt
+.recovery_stage*

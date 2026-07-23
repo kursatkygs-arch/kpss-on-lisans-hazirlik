@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>KPSS Ön Lisans Hazırlık</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#191B2E">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KPSS Hazırlık">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
 <style>
@@ -271,6 +277,7 @@
       <div class="lp-stat"><div class="lp-stat-val" id="lpOverall">0%</div><div class="lp-stat-label">Toplam ilerleme</div></div>
       <div class="lp-stat"><div class="lp-stat-val" id="lpNet">–</div><div class="lp-stat-label">Ortalama net</div></div>
       <div class="lp-stat"><div class="lp-stat-val" id="lpWeak" style="font-size:13px;">–</div><div class="lp-stat-label">Zayıf ders</div></div>
+      <div class="lp-stat"><div class="lp-stat-val" id="lpStreak">0 🔥</div><div class="lp-stat-label">Çalışma serisi</div></div>
     </div>
     <div class="lp-subjects" id="lpSubjects"></div>
     <button class="btn primary small" id="lpResumeBtn">Kaldığın yerden devam et</button>
@@ -352,6 +359,11 @@
   </div>
 
   <div class="panel" id="panel-quiz">
+    <div class="card" id="missedReviewCard" style="display:none;">
+      <div class="card-head"><div class="card-title">Yanlış Yaptıkların</div><div class="card-meta" id="missedReviewCount"></div></div>
+      <p style="font-size:13px;color:var(--text-dim);margin:0 0 12px;">Bugüne kadar yanlış yaptığın sorular burada birikir. İstediğin zaman sadece bunları tekrar çözebilirsin — doğru yaparsan listeden çıkar.</p>
+      <button class="btn primary" id="startMissedReviewBtn">Yanlışları tekrar çöz</button>
+    </div>
     <div id="quizArea"></div>
     <div class="card">
       <div class="card-head"><div class="card-title">Deneme geçmişi</div></div>
@@ -1753,6 +1765,8 @@ if(!state.viewStep) state.viewStep = {};
 if(!state.dailyProgress) state.dailyProgress = null;
 if(state.activeSubject === undefined) state.activeSubject = null;
 if(state.lastKarmaQuizDate === undefined) state.lastKarmaQuizDate = null;
+  if(!state.missedQuestions) state.missedQuestions = [];
+  if(!state.studyDates) state.studyDates = [];
 
 // ===== Kullanici sistemi (Supabase) =====
 const SUPABASE_URL = "https://aubmavsavzlkjvikttma.supabase.co";
@@ -1790,6 +1804,8 @@ async function pullStateFromCloud(){
       if(!state.dailyProgress) state.dailyProgress = null;
       if(state.activeSubject === undefined) state.activeSubject = null;
       if(state.lastKarmaQuizDate === undefined) state.lastKarmaQuizDate = null;
+  if(!state.missedQuestions) state.missedQuestions = [];
+  if(!state.studyDates) state.studyDates = [];
       try{ localStorage.setItem('kpss_state', JSON.stringify(state)); }catch(e){}
       return true;
     }
@@ -2211,6 +2227,8 @@ function renderDashboard(){
   const pct = ids.length ? Math.round(done/ids.length*100) : 0;
   document.getElementById('statOverall').textContent = pct+'%';
   document.getElementById('lpOverall').textContent = pct+'%';
+  const streak = computeStreak();
+  document.getElementById('lpStreak').textContent = streak + (streak>0 ? ' 🔥' : '');
 
   const hist = state.quizHistory;
   if(hist.length){
@@ -2516,7 +2534,49 @@ function finishLessonTopic(subject, idx){
   }
   state.viewStep[subject] = 0;
   incrementTodayCount(subject);
+  recordStudyActivity();
   saveState();
+}
+
+function updateMissedQuestions(answers){
+  if(!state.missedQuestions) state.missedQuestions = [];
+  answers.forEach(a=>{
+    const key = a.q.q;
+    const idx = state.missedQuestions.indexOf(key);
+    if(a.correct){
+      if(idx !== -1) state.missedQuestions.splice(idx,1);
+    } else if(idx === -1){
+      state.missedQuestions.push(key);
+    }
+  });
+  saveState();
+}
+
+function getMissedQuestionObjects(){
+  if(!state.missedQuestions) return [];
+  return state.missedQuestions.map(qtext=>QUIZ_BANK.find(q=>q.q===qtext)).filter(Boolean);
+}
+
+function recordStudyActivity(){
+  if(!state.studyDates) state.studyDates = [];
+  const t = todayStr();
+  if(!state.studyDates.includes(t)) state.studyDates.push(t);
+}
+
+function computeStreak(){
+  if(!state.studyDates || !state.studyDates.length) return 0;
+  const set = new Set(state.studyDates);
+  const toKey = (d)=> d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  let cursor = new Date(); cursor.setHours(0,0,0,0);
+  if(!set.has(toKey(cursor))){
+    cursor.setDate(cursor.getDate()-1);
+  }
+  let streak = 0;
+  while(set.has(toKey(cursor))){
+    streak++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return streak;
 }
 
 function renderSubjectPicker(dayName){
@@ -2755,12 +2815,14 @@ function renderLessonQuiz(subject, idx, topic){
       <button class="btn primary" id="nextTopicBtn" style="margin-top:16px;">${nextLabel}</button>
     </div>`;
     document.getElementById('nextTopicBtn').addEventListener('click', ()=>{
+      updateMissedQuestions(lessonQuizAnswers);
       lessonQuizActive = false;
       lessonQuizQuestions = [];
       if(backToPicker){ state.activeSubject = null; saveState(); }
       renderLesson();
       renderDashboard();
       renderQuizHistory();
+      renderMissedReviewCard();
     });
     return;
   }
@@ -2815,6 +2877,7 @@ let quizAnswered=false;
 let quizSelected=null;
 let quizBySubject={};
 let quizAnswers=[];
+let isReviewMode=false;
 
 function trackSubjectAnswer(tracker, subject, correct){
   if(!tracker[subject]) tracker[subject] = {correct:0, total:0};
@@ -2899,10 +2962,23 @@ function tickExamTimer(){
 function startQuiz(){
   quizQuestions = pickFullExam();
   quizIdx=0; quizScore=0; quizAnswered=false; quizSelected=null; quizBySubject={}; quizAnswers=[];
+  isReviewMode = false;
   examTimedOut = false;
   clearExamTimer();
   examEndTime = Date.now() + quizQuestions.length*EXAM_SECONDS_PER_Q*1000;
   examTimerInterval = setInterval(tickExamTimer, 1000);
+  renderQuiz();
+}
+
+function startMissedReview(){
+  const questions = shuffle(getMissedQuestionObjects());
+  if(!questions.length) return;
+  quizQuestions = questions;
+  quizIdx=0; quizScore=0; quizAnswered=false; quizSelected=null; quizBySubject={}; quizAnswers=[];
+  isReviewMode = true;
+  examTimedOut = false;
+  clearExamTimer();
+  examEndTime = null;
   renderQuiz();
 }
 
@@ -2933,6 +3009,26 @@ function renderQuiz(){
   if(quizIdx >= quizQuestions.length){
     clearExamTimer();
     const pct = Math.round(quizScore/quizQuestions.length*100);
+    if(isReviewMode){
+      area.innerHTML = `<div class="card quiz-result">
+        <div class="card-title" style="margin-bottom:10px;">Tekrar Sonucu</div>
+        <div class="big">${quizScore}/${quizQuestions.length}</div>
+        <div style="color:var(--text-dim);font-size:13px;margin-top:6px;">%${pct} başarı — doğru yaptıkların listeden çıktı, yanlışlar kaldı.</div>
+        ${buildResultExtras(quizAnswers)}
+        <button class="btn primary" id="restartQuizBtn" style="margin-top:16px;">Kapat</button>
+      </div>`;
+      document.getElementById('restartQuizBtn').addEventListener('click', ()=>{
+        updateMissedQuestions(quizAnswers);
+        recordStudyActivity();
+        saveState();
+        isReviewMode = false;
+        quizQuestions=[];
+        renderQuiz();
+        renderDashboard();
+        renderMissedReviewCard();
+      });
+      return;
+    }
     const wrongAnswered = quizAnswers.length - quizScore;
     const blank = quizQuestions.length - quizAnswers.length;
     const net = Math.round((quizScore - wrongAnswered/4)*100)/100;
@@ -2953,19 +3049,22 @@ function renderQuiz(){
     document.getElementById('restartQuizBtn').addEventListener('click', ()=>{
       state.quizHistory.push({date:new Date().toLocaleDateString('tr-TR'), score:quizScore, total:quizQuestions.length, net:net, label:'Prova sınavı', bySubject:quizBySubject});
       state.lastKarmaQuizDate = todayStr();
+      updateMissedQuestions(quizAnswers);
+      recordStudyActivity();
       saveState();
       quizQuestions=[];
       renderQuiz();
       renderQuizHistory();
       renderDashboard();
+      renderMissedReviewCard();
     });
     return;
   }
   const q = quizQuestions[quizIdx];
   area.innerHTML = `<div class="card">
     <div class="q-progress" style="display:flex;justify-content:space-between;align-items:center;">
-      <span>Soru ${quizIdx+1} / ${quizQuestions.length} · ${q.subject}</span>
-      <span class="exam-timer" id="examTimer">${formatRemaining(examEndTime-Date.now())}</span>
+      <span>${isReviewMode ? 'Tekrar' : 'Soru'} ${quizIdx+1} / ${quizQuestions.length} · ${q.subject}</span>
+      ${isReviewMode ? '' : `<span class="exam-timer" id="examTimer">${formatRemaining(examEndTime-Date.now())}</span>`}
     </div>
     <div class="card-title" style="margin-bottom:12px;">${q.q}</div>
     <div id="quizOpts"></div>
@@ -3024,6 +3123,19 @@ function switchTab(tab){
   document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id === 'panel-'+tab));
 }
 
+function renderMissedReviewCard(){
+  const card = document.getElementById('missedReviewCard');
+  const countEl = document.getElementById('missedReviewCount');
+  if(!card) return;
+  const count = (state.missedQuestions || []).length;
+  if(count > 0 && !quizQuestions.length){
+    card.style.display = '';
+    countEl.textContent = count + ' soru';
+  } else {
+    card.style.display = 'none';
+  }
+}
+
 function render(){
   renderHero();
   renderDenemeCalendar();
@@ -3031,6 +3143,7 @@ function render(){
   renderDashboard();
   renderQuiz();
   renderQuizHistory();
+  renderMissedReviewCard();
 }
 
 document.querySelectorAll('.tab-btn').forEach(btn=>{
@@ -3119,6 +3232,7 @@ document.getElementById('lpResumeBtn').addEventListener('click', ()=>{
   switchTab('lesson');
   renderLesson();
 });
+document.getElementById('startMissedReviewBtn').addEventListener('click', startMissedReview);
 document.getElementById('denemeCalPrev').addEventListener('click', ()=>changeCalendarMonth(-1));
 document.getElementById('denemeCalNext').addEventListener('click', ()=>changeCalendarMonth(1));
 document.getElementById('denemeCalTodayLink').addEventListener('click', ()=>{
@@ -3127,6 +3241,12 @@ document.getElementById('denemeCalTodayLink').addEventListener('click', ()=>{
 });
 
 initAuth();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
