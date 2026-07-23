@@ -47,6 +47,8 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 18px;margin-bottom:14px;}
   .card-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;}
   .card-title{font-size:15px;font-weight:600;}
+  .q-statements{display:flex;flex-direction:column;gap:6px;}
+  .q-stmt{line-height:1.5;}
   .card-meta{font-size:12px;color:var(--text-dim);font-family:'IBM Plex Mono',monospace;}
   .bar-track{background:var(--surface-3);border-radius:6px;height:8px;overflow:hidden;margin-top:6px;}
   .bar-fill{height:100%;background:var(--teal);border-radius:6px;transition:width .3s ease;}
@@ -2379,7 +2381,7 @@ function buildResultExtras(answers){
     html += `<div class="section-label" style="margin-top:18px;">Yanlış yaptığın sorular (${wrong.length})</div>
       ${wrong.map(a=>`
         <div class="wrong-item">
-          <div class="wrong-q">${a.q.q}${a.q.real?` <span class="exam-tag">${a.q.examYear} çıkmış soru</span>`:''}</div>
+          <div class="wrong-q">${formatQuestionText(a.q.q)}${a.q.real?` <span class="exam-tag">${a.q.examYear} çıkmış soru</span>`:''}</div>
           <div class="wrong-line">Senin cevabın: <span class="wrong-ans">${RESULT_LETTERS[a.selected]}) ${a.q.opts[a.selected]}</span></div>
           <div class="wrong-line">Doğru cevap: <span class="correct-ans">${RESULT_LETTERS[a.q.a]}) ${a.q.opts[a.q.a]}</span></div>
         </div>`).join('')}`;
@@ -2829,7 +2831,7 @@ function renderLessonQuiz(subject, idx, topic){
   const q = lessonQuizQuestions[lessonQuizIdx];
   area.innerHTML = `<div class="card">
     <div class="q-progress">Soru ${lessonQuizIdx+1} / ${lessonQuizQuestions.length} · ${q.subject}</div>
-    <div class="card-title" style="margin-bottom:12px;">${q.q}</div>
+    <div class="card-title" style="margin-bottom:12px;">${formatQuestionText(q.q)}</div>
     <div id="lessonQuizOpts"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:8px;">
       <button class="btn primary" id="lessonQuizNextBtn" ${lessonQuizAnswered?'':'disabled style="opacity:.4;cursor:not-allowed;"'}>${lessonQuizIdx===lessonQuizQuestions.length-1 ? 'Bitir' : 'Sonraki soru'}</button>
@@ -2936,8 +2938,45 @@ function pickFullExam(){
 let examTimerInterval = null;
 let examEndTime = null;
 let examTimedOut = false;
+let examPaused = false;
+let examRemainingAtPause = 0;
 function clearExamTimer(){
   if(examTimerInterval){ clearInterval(examTimerInterval); examTimerInterval = null; }
+}
+function pauseExam(){
+  if(examPaused || examTimedOut) return;
+  examPaused = true;
+  examRemainingAtPause = examEndTime - Date.now();
+  clearExamTimer();
+  renderQuiz();
+}
+function resumeExam(){
+  if(!examPaused) return;
+  examPaused = false;
+  examEndTime = Date.now() + examRemainingAtPause;
+  examTimerInterval = setInterval(tickExamTimer, 1000);
+  renderQuiz();
+}
+function formatQuestionText(text){
+  const romanPattern = /\b(I{1,3}|IV|V)\.\s/g;
+  const matches = [...text.matchAll(romanPattern)];
+  if(matches.length >= 2 && text.trim().startsWith('I.')){
+    let parts = [];
+    let lastIndex = 0;
+    matches.forEach((m, i)=>{
+      if(i>0) parts.push(text.slice(lastIndex, m.index).trim());
+      lastIndex = m.index;
+    });
+    parts.push(text.slice(lastIndex).trim());
+    const lastPart = parts[parts.length-1];
+    const closingMatch = lastPart.match(/^(.+)\.\s+(Yukarı.*)$/s);
+    if(closingMatch){
+      parts[parts.length-1] = closingMatch[1].trim() + '.';
+      parts.push(closingMatch[2].trim());
+    }
+    return `<div class="q-statements">${parts.map(p=>`<div class="q-stmt">${p}</div>`).join('')}</div>`;
+  }
+  return text;
 }
 function formatRemaining(ms){
   const totalSec = Math.max(0, Math.ceil(ms/1000));
@@ -2964,6 +3003,7 @@ function startQuiz(){
   quizIdx=0; quizScore=0; quizAnswered=false; quizSelected=null; quizBySubject={}; quizAnswers=[];
   isReviewMode = false;
   examTimedOut = false;
+  examPaused = false;
   clearExamTimer();
   examEndTime = Date.now() + quizQuestions.length*EXAM_SECONDS_PER_Q*1000;
   examTimerInterval = setInterval(tickExamTimer, 1000);
@@ -3061,17 +3101,32 @@ function renderQuiz(){
     return;
   }
   const q = quizQuestions[quizIdx];
+  if(!isReviewMode && examPaused){
+    area.innerHTML = `<div class="card" style="text-align:center;">
+      <div class="card-title" style="margin-bottom:10px;">⏸️ Sınav duraklatıldı</div>
+      <p style="font-size:13px;color:var(--text-dim);margin:0 0 18px;">Süre durduruldu, soru gizlendi. Devam etmeye hazır olduğunda aşağıdaki butona bas.</p>
+      <button class="btn primary" id="resumeExamBtn">Devam Et</button>
+    </div>`;
+    document.getElementById('resumeExamBtn').addEventListener('click', resumeExam);
+    return;
+  }
   area.innerHTML = `<div class="card">
     <div class="q-progress" style="display:flex;justify-content:space-between;align-items:center;">
       <span>${isReviewMode ? 'Tekrar' : 'Soru'} ${quizIdx+1} / ${quizQuestions.length} · ${q.subject}</span>
-      ${isReviewMode ? '' : `<span class="exam-timer" id="examTimer">${formatRemaining(examEndTime-Date.now())}</span>`}
+      <div style="display:flex;align-items:center;gap:8px;">
+        ${isReviewMode ? '' : `<button class="btn small" id="pauseExamBtn" title="Duraklat">⏸</button><span class="exam-timer" id="examTimer">${formatRemaining(examEndTime-Date.now())}</span>`}
+      </div>
     </div>
-    <div class="card-title" style="margin-bottom:12px;">${q.q}</div>
+    <div class="card-title" style="margin-bottom:12px;">${formatQuestionText(q.q)}</div>
     <div id="quizOpts"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:8px;">
       <button class="btn primary" id="quizNextBtn" ${quizAnswered?'':'disabled style="opacity:.4;cursor:not-allowed;"'}>${quizIdx===quizQuestions.length-1 ? 'Bitir' : 'Sonraki soru'}</button>
     </div>
   </div>`;
+  if(!isReviewMode){
+    const pauseBtn = document.getElementById('pauseExamBtn');
+    if(pauseBtn) pauseBtn.addEventListener('click', pauseExam);
+  }
   const optsEl = document.getElementById('quizOpts');
   const letters = ['A','B','C','D','E'];
   optsEl.innerHTML = q.opts.map((o,i)=>{
