@@ -568,7 +568,15 @@ const QUIZ_BANK = [
   {q:"Adli yargının en üst denetim mercii hangisidir?",opts:["Danıştay","Yargıtay","Anayasa Mahkemesi","Sayıştay"],a:1,subject:"Vatandaşlık",d:"kolay"},
   {q:"Anayasa Mahkemesi üyeleri kaç yıl için görev yapar?",opts:["10 yıl","12 yıl","15 yıl","Ömür boyu"],a:1,subject:"Vatandaşlık",d:"orta"},
   {q:"'Eğitim hakkı' hangi hak kategorisine girer?",opts:["Kişi hakları","Sosyal ve ekonomik haklar","Siyasi haklar","Kültürel haklar"],a:1,subject:"Vatandaşlık",d:"orta"},
-  {q:"I. Yargı yetkisi Türk milleti adına kullanılır. II. Hâkimler, kanuna ve vicdani kanaatlerine göre karar verir. III. Mahkeme kararları hiçbir organ tarafından değiştirilemez ve geciktirilemez. Yukarıdaki bilgilerden hangileri doğrudur?",opts:["Yalnız I","I ve II","II ve III","I, II ve III"],a:3,subject:"Vatandaşlık",d:"zor"}
+  {q:"I. Yargı yetkisi Türk milleti adına kullanılır. II. Hâkimler, kanuna ve vicdani kanaatlerine göre karar verir. III. Mahkeme kararları hiçbir organ tarafından değiştirilemez ve geciktirilemez. Yukarıdaki bilgilerden hangileri doğrudur?",opts:["Yalnız I","I ve II","II ve III","I, II ve III"],a:3,subject:"Vatandaşlık",d:"zor"},
+  {q:"Türkiye Cumhurbaşkanı kimdir?",opts:["Recep Tayyip Erdoğan","Ahmet Davutoğlu","Binali Yıldırım","Numan Kurtulmuş"],a:0,subject:"Güncel",d:"kolay"},
+  {q:"TBMM Başkanı kimdir?",opts:["Mustafa Şentop","Numan Kurtulmuş","Binali Yıldırım","Cemil Çiçek"],a:1,subject:"Güncel",d:"orta"},
+  {q:"Türkiye Cumhuriyet Merkez Bankası (TCMB) Başkanı kimdir?",opts:["Şahap Kavcıoğlu","Hafize Gaye Erkan","Fatih Karahan","Naci Ağbal"],a:2,subject:"Güncel",d:"orta"},
+  {q:"TÜİK'in ADNKS verilerine göre 31 Aralık 2025 itibarıyla Türkiye nüfusu yaklaşık kaçtır?",opts:["78 milyon","82 milyon","86 milyon","90 milyon"],a:2,subject:"Güncel",d:"orta"},
+  {q:"NATO'nun toplam üye sayısı kaçtır?",opts:["28","30","32","34"],a:2,subject:"Güncel",d:"kolay"},
+  {q:"NATO'ya en son (32.) üye olarak katılan ülke hangisidir?",opts:["Finlandiya","İsveç","Ukrayna","Avusturya"],a:1,subject:"Güncel",d:"orta"},
+  {q:"Finlandiya, NATO'ya kaçıncı üye olarak katılmıştır?",opts:["30.","31.","32.","29."],a:1,subject:"Güncel",d:"orta"},
+  {q:"Birleşmiş Milletler Genel Sekreteri kimdir?",opts:["Ban Ki-moon","António Guterres","Kofi Annan","Antony Blinken"],a:1,subject:"Güncel",d:"kolay"}
 ];
 
 const DAY_NAMES = ["Pazar","Pazartesi","Salı","Çarşamba","Perşembe","Cuma","Cumartesi"];
@@ -2663,12 +2671,12 @@ function daysSinceLastKarmaQuiz(){
   return Math.round((now-last)/(1000*60*60*24));
 }
 
-// Gerçek KPSS GY-GK oturumu ~120 soru / 130 dakikadır (~65 sn/soru); aynı temposu uyguluyoruz.
+// Gercek KPSS GY-GK oturumu 120 soru / 130 dakikadir (65 sn/soru): Turkce 30, Matematik 30, Tarih 27, Cografya 18, Vatandaslik 9, Guncel 6
 const EXAM_SECONDS_PER_Q = 65;
-const EXAM_SUBJECT_QUOTAS = { "Türkçe":15, "Matematik":15, "Tarih":12, "Coğrafya":9, "Vatandaşlık":9 };
+const EXAM_SUBJECT_QUOTAS = { "Türkçe":30, "Matematik":30, "Tarih":27, "Coğrafya":18, "Vatandaşlık":9, "Güncel":6 };
 function pickFullExam(){
   let picked = [];
-  STUDY_SUBJECTS.forEach(subj=>{
+  Object.keys(EXAM_SUBJECT_QUOTAS).forEach(subj=>{
     const quota = EXAM_SUBJECT_QUOTAS[subj] || 0;
     picked = picked.concat(pickMixedQuestions(QUIZ_BANK.filter(q=>q.subject===subj), quota));
   });
