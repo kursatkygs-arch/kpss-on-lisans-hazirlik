@@ -176,6 +176,8 @@
   .deneme-cal-navbtn{background:var(--surface-2);border:1px solid var(--border-strong);color:var(--text-dim);width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:14px;line-height:1;}
   .deneme-cal-navbtn:hover{color:var(--text);}
   .deneme-cal-month{font-size:12px;font-weight:600;color:var(--text);}
+  .deneme-cal-today-jump{text-align:center;margin-bottom:6px;}
+  .deneme-cal-today-jump a{font-size:10px;color:var(--teal);cursor:pointer;text-decoration:underline;}
   .deneme-cal-dow{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;}
   .deneme-cal-dow span{text-align:center;font-size:9px;color:var(--text-faint);text-transform:uppercase;}
   .deneme-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
@@ -184,10 +186,13 @@
   .deneme-cal-day.is-today{border-color:var(--teal);color:var(--teal);}
   .deneme-cal-day.is-deneme{background:rgba(255,178,56,.18);border-color:var(--amber);color:var(--amber);}
   .deneme-cal-day.is-today.is-deneme{box-shadow:inset 0 0 0 1px var(--teal);}
-  .deneme-cal-legend{display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--text-faint);}
+  .deneme-cal-day.is-examday{background:rgba(255,107,122,.22);border-color:var(--red);color:var(--red);font-weight:800;box-shadow:0 0 0 1px var(--red);}
+  .deneme-cal-day.is-examday.is-today{box-shadow:0 0 0 1px var(--red),inset 0 0 0 1px var(--teal);}
+  .deneme-cal-legend{display:flex;gap:14px;margin-top:10px;font-size:10px;color:var(--text-faint);flex-wrap:wrap;}
   .deneme-cal-legend .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle;}
   .deneme-cal-legend .dot.deneme{background:var(--amber);}
   .deneme-cal-legend .dot.today{background:var(--teal);}
+  .deneme-cal-legend .dot.exam{background:var(--red);}
   @media (min-width:1420px){
     .deneme-calendar{position:fixed;top:24px;right:24px;width:250px;margin-bottom:0;z-index:10;}
   }
@@ -276,9 +281,12 @@
       <div class="deneme-cal-month" id="denemeCalMonthLabel"></div>
       <button class="deneme-cal-navbtn" id="denemeCalNext">›</button>
     </div>
+    <div class="deneme-cal-today-jump" id="denemeCalTodayJump" style="display:none;">
+      <a id="denemeCalTodayLink">Bugüne dön</a>
+    </div>
     <div class="deneme-cal-dow" id="denemeCalDow"></div>
     <div class="deneme-cal-grid" id="denemeCalendarStrip"></div>
-    <div class="deneme-cal-legend"><span class="dot deneme"></span> Deneme günü <span class="dot today"></span> Bugün</div>
+    <div class="deneme-cal-legend"><span class="dot deneme"></span> Deneme günü <span class="dot today"></span> Bugün <span class="dot exam"></span> Sınav günü</div>
   </div>
 
   <div class="tabs">
@@ -2067,16 +2075,31 @@ function renderDenemeCalendar(){
   if(!noteEl || !gridEl) return;
 
   const today = new Date(); today.setHours(0,0,0,0);
+  const examDay = new Date(EXAM_DATE); examDay.setHours(0,0,0,0);
   const nextDeneme = getNextDenemeDate();
+  const pastExam = today > examDay;
+  const isExamToday = today.getTime() === examDay.getTime();
 
-  const isToday = nextDeneme.getTime() === today.getTime();
-  if(isToday){
-    noteEl.textContent = '🎯 Bugün deneme günü! Provanı çözmeyi unutma.';
+  if(isExamToday){
+    noteEl.innerHTML = '🍀 Bugün sınav günü! Emeğinin karşılığını alacaksın, başarılar.';
     noteEl.classList.add('today');
-  } else {
-    const diffDays = Math.round((nextDeneme - today)/86400000);
-    noteEl.textContent = `Sıradaki deneme: ${diffDays} gün sonra (${nextDeneme.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'})})`;
+  } else if(pastExam){
+    noteEl.textContent = 'Sınav geride kaldı — umarız iyi geçmiştir!';
     noteEl.classList.remove('today');
+  } else if(nextDeneme >= examDay){
+    const daysToExam = Math.round((examDay - today)/86400000);
+    noteEl.innerHTML = `Deneme takvimin sınav gününde tamamlanıyor. Sınava <strong style="color:var(--red);">${daysToExam} gün</strong> kaldı.`;
+    noteEl.classList.remove('today');
+  } else {
+    const isToday = nextDeneme.getTime() === today.getTime();
+    if(isToday){
+      noteEl.textContent = '🎯 Bugün deneme günü! Provanı çözmeyi unutma.';
+      noteEl.classList.add('today');
+    } else {
+      const diffDays = Math.round((nextDeneme - today)/86400000);
+      noteEl.textContent = `Sıradaki deneme: ${diffDays} gün sonra (${nextDeneme.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'})})`;
+      noteEl.classList.remove('today');
+    }
   }
 
   if(dowEl && !dowEl.dataset.filled){
@@ -2088,6 +2111,12 @@ function renderDenemeCalendar(){
   const month = calendarViewDate.getMonth();
   if(monthLabelEl) monthLabelEl.textContent = `${MONTH_NAMES[month]} ${year}`;
 
+  const jumpEl = document.getElementById('denemeCalTodayJump');
+  if(jumpEl){
+    const isCurrentMonth = year===today.getFullYear() && month===today.getMonth();
+    jumpEl.style.display = isCurrentMonth ? 'none' : '';
+  }
+
   const firstOfMonth = new Date(year, month, 1);
   const startOffset = (firstOfMonth.getDay() + 6) % 7;
   const gridStart = new Date(year, month, 1 - startOffset);
@@ -2095,10 +2124,12 @@ function renderDenemeCalendar(){
   const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
 
   const denemeDays = new Set();
-  let d = new Date(nextDeneme);
-  for(let i=0;i<40;i++){
-    denemeDays.add(d.toDateString());
-    d = new Date(d); d.setDate(d.getDate() + DENEME_INTERVAL_DAYS);
+  if(nextDeneme < examDay){
+    let d = new Date(nextDeneme);
+    for(let i=0;i<60 && d < examDay;i++){
+      denemeDays.add(d.toDateString());
+      d = new Date(d); d.setDate(d.getDate() + DENEME_INTERVAL_DAYS);
+    }
   }
 
   let html = '';
@@ -2107,8 +2138,10 @@ function renderDenemeCalendar(){
     let cls = 'deneme-cal-day';
     if(day.getMonth() !== month) cls += ' other-month';
     if(day.getTime()===today.getTime()) cls += ' is-today';
-    if(denemeDays.has(day.toDateString())) cls += ' is-deneme';
-    html += `<div class="${cls}">${day.getDate()}</div>`;
+    if(day.getTime()===examDay.getTime()) cls += ' is-examday';
+    else if(denemeDays.has(day.toDateString())) cls += ' is-deneme';
+    const title = day.getTime()===examDay.getTime() ? ' title="Sınav günü"' : '';
+    html += `<div class="${cls}"${title}>${day.getDate()}</div>`;
   }
   gridEl.innerHTML = html;
 }
@@ -3042,6 +3075,10 @@ document.getElementById('newPassword2').addEventListener('keydown', (e)=>{ if(e.
 document.getElementById('adminTabBtn').addEventListener('click', loadAdminPanel);
 document.getElementById('denemeCalPrev').addEventListener('click', ()=>changeCalendarMonth(-1));
 document.getElementById('denemeCalNext').addEventListener('click', ()=>changeCalendarMonth(1));
+document.getElementById('denemeCalTodayLink').addEventListener('click', ()=>{
+  calendarViewDate = new Date();
+  renderDenemeCalendar();
+});
 
 initAuth();
 </script>
