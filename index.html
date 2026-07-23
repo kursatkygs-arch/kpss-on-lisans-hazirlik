@@ -170,6 +170,8 @@
   .admin-row-info{font-size:13px;}
   .admin-row-info .em{color:var(--text-faint);font-size:11px;display:block;margin-top:2px;}
   .deneme-calendar{margin-bottom:20px;}
+  .deneme-cal-daysleft{text-align:center;font-size:12px;color:var(--text-faint);margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+  .deneme-cal-daysleft strong{color:var(--amber);font-weight:700;}
   .deneme-cal-note{font-size:12px;color:var(--text-dim);line-height:1.5;margin-bottom:12px;}
   .deneme-cal-note.today{color:var(--amber);font-weight:600;}
   .deneme-cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
@@ -193,8 +195,8 @@
   .deneme-cal-legend .dot.deneme{background:var(--amber);}
   .deneme-cal-legend .dot.today{background:var(--teal);}
   .deneme-cal-legend .dot.exam{background:var(--red);}
-  @media (min-width:1420px){
-    .deneme-calendar{position:fixed;top:24px;right:24px;width:250px;margin-bottom:0;z-index:10;}
+  @media (min-width:1680px){
+    .deneme-calendar{position:fixed;top:28px;right:24px;width:230px;margin-bottom:0;z-index:10;max-height:calc(100vh - 56px);overflow-y:auto;}
   }
 </style>
 </head>
@@ -287,6 +289,7 @@
     <div class="deneme-cal-dow" id="denemeCalDow"></div>
     <div class="deneme-cal-grid" id="denemeCalendarStrip"></div>
     <div class="deneme-cal-legend"><span class="dot deneme"></span> Deneme günü <span class="dot today"></span> Bugün <span class="dot exam"></span> Sınav günü</div>
+    <div class="deneme-cal-daysleft" id="denemeCalDaysLeft"></div>
   </div>
 
   <div class="tabs">
@@ -2080,6 +2083,17 @@ function renderDenemeCalendar(){
   const pastExam = today > examDay;
   const isExamToday = today.getTime() === examDay.getTime();
 
+  const daysLeftEl = document.getElementById('denemeCalDaysLeft');
+  if(daysLeftEl){
+    if(pastExam){
+      daysLeftEl.innerHTML = '';
+    } else if(isExamToday){
+      daysLeftEl.innerHTML = '<strong>Bugün</strong> sınav günü!';
+    } else {
+      const daysToExam = Math.round((examDay - today)/86400000);
+      daysLeftEl.innerHTML = `Sınava <strong>${daysToExam} gün</strong> kaldı`;
+    }
+  }
   if(isExamToday){
     noteEl.innerHTML = '🍀 Bugün sınav günü! Emeğinin karşılığını alacaksın, başarılar.';
     noteEl.classList.add('today');
