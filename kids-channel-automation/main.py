@@ -10,6 +10,7 @@ import argparse
 import json
 import os
 import subprocess
+import time
 import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
@@ -92,10 +93,18 @@ description, tags, lesson, scenes.
 Hikaye tamamen orijinal olmalÄ±. Var olan hiÃ§bir karaktere, markaya, ÅŸarkÄ±ya,
 ninniye ya da yaratÄ±cÄ±ya atÄ±fta bulunma, onlarÄ± taklit etme ya da andÄ±rma.
 ÅarkÄ± sÃ¶zÃ¼ kullanÄ±lacaksa tamamen yeni ve Ã¶zgÃ¼n olsun."""
-    response = client.models.generate_content(
-        model="gemini-flash-latest", contents=prompt,
-        config=types.GenerateContentConfig(response_mime_type="application/json"),
-    )
+    response = None
+    for attempt in range(4):
+        try:
+            response = client.models.generate_content(
+                model="gemini-flash-latest", contents=prompt,
+                config=types.GenerateContentConfig(response_mime_type="application/json"),
+            )
+            break
+        except Exception:
+            if attempt == 3:
+                raise
+            time.sleep(15 * (attempt + 1))
     data = json.loads(response.text)
     if len(data.get("scenes", [])) != SCENE_COUNT:
         raise RuntimeError("Episode writer did not return the expected scene count.")
