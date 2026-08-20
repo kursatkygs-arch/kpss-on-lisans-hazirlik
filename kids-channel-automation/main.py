@@ -93,18 +93,25 @@ description, tags, lesson, scenes.
 Hikaye tamamen orijinal olmalÄ±. Var olan hiÃ§bir karaktere, markaya, ÅŸarkÄ±ya,
 ninniye ya da yaratÄ±cÄ±ya atÄ±fta bulunma, onlarÄ± taklit etme ya da andÄ±rma.
 ÅarkÄ± sÃ¶zÃ¼ kullanÄ±lacaksa tamamen yeni ve Ã¶zgÃ¼n olsun."""
+    models_to_try = ["gemini-flash-latest", "gemini-2.5-flash-lite"]
     response = None
-    for attempt in range(4):
-        try:
-            response = client.models.generate_content(
-                model="gemini-flash-latest", contents=prompt,
-                config=types.GenerateContentConfig(response_mime_type="application/json"),
-            )
+    last_exc = None
+    for model_name in models_to_try:
+        for attempt in range(4):
+            try:
+                response = client.models.generate_content(
+                    model=model_name, contents=prompt,
+                    config=types.GenerateContentConfig(response_mime_type="application/json"),
+                )
+                break
+            except Exception as exc:
+                last_exc = exc
+                if attempt < 3:
+                    time.sleep(20 * (attempt + 1))
+        if response is not None:
             break
-        except Exception:
-            if attempt == 3:
-                raise
-            time.sleep(15 * (attempt + 1))
+    if response is None:
+        raise last_exc
     data = json.loads(response.text)
     if len(data.get("scenes", [])) != SCENE_COUNT:
         raise RuntimeError("Episode writer did not return the expected scene count.")
