@@ -93,7 +93,7 @@ Hikaye tamamen orijinal olmalı. Var olan hiçbir karaktere, markaya, şarkıya,
 ninniye ya da yaratıcıya atıfta bulunma, onları taklit etme ya da andırma.
 Şarkı sözü kullanılacaksa tamamen yeni ve özgün olsun."""
     response = client.models.generate_content(
-        model="gemini-2.5-flash", contents=prompt,
+        model="gemini-flash-latest", contents=prompt,
         config=types.GenerateContentConfig(response_mime_type="application/json"),
     )
     data = json.loads(response.text)
