@@ -93,7 +93,7 @@ description, tags, lesson, scenes.
 Hikaye tamamen orijinal olmalÄ±. Var olan hiÃ§bir karaktere, markaya, ÅŸarkÄ±ya,
 ninniye ya da yaratÄ±cÄ±ya atÄ±fta bulunma, onlarÄ± taklit etme ya da andÄ±rma.
 ÅarkÄ± sÃ¶zÃ¼ kullanÄ±lacaksa tamamen yeni ve Ã¶zgÃ¼n olsun."""
-    models_to_try = ["gemini-flash-latest", "gemini-2.5-flash-lite"]
+    models_to_try = ["gemini-3.5-flash-lite", "gemini-flash-latest"]
     response = None
     last_exc = None
     for model_name in models_to_try:
