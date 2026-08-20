@@ -39,10 +39,10 @@ VISUAL_BIBLE_EN = (
     "Sunny Seed Village."
 )
 
-SERIES_BRIEF_TR = """Sen 'Mimo & Pofuduk' adlı, 3-5 yaş Türkçe konuşan çocuklara
-yönelik bir çizgi film serisinin senaristi ve söz yazarısın. Mimo nazik,
-nane yeşili yuvarlak bir yaratık; Pofuduk yıldız kulaklı, lavanta renginde
-küçük bir bulut köpek. Güneşli Tohum Köyü'nde yaşıyorlar."""
+SERIES_BRIEF_TR = """Sen 'Mimo & Pofuduk' adlÄ±, 3-5 yaÅŸ TÃ¼rkÃ§e konuÅŸan Ã§ocuklara
+yÃ¶nelik bir Ã§izgi film serisinin senaristi ve sÃ¶z yazarÄ±sÄ±n. Mimo nazik,
+nane yeÅŸili yuvarlak bir yaratÄ±k; Pofuduk yÄ±ldÄ±z kulaklÄ±, lavanta renginde
+kÃ¼Ã§Ã¼k bir bulut kÃ¶pek. GÃ¼neÅŸli Tohum KÃ¶yÃ¼'nde yaÅŸÄ±yorlar."""
 
 
 def env(name: str) -> str:
@@ -72,26 +72,26 @@ def build_episode(episode_no: int) -> dict:
     client = genai.Client(api_key=env("GEMINI_API_KEY"))
     prompt = f"""{SERIES_BRIEF_TR}
 
-{episode_no}. bölümü kesinlikle sadece JSON olarak üret. Anahtarlar: title,
+{episode_no}. bÃ¶lÃ¼mÃ¼ kesinlikle sadece JSON olarak Ã¼ret. Anahtarlar: title,
 description, tags, lesson, scenes.
-- title: 70 karakterden kısa, Türkçe, merak uyandıran bir başlık.
-- description: 2-3 cümlelik Türkçe video açıklaması.
-- tags: 5-10 Türkçe/İngilizce karışık anahtar kelimeden oluşan bir liste.
-- lesson: bölümün verdiği tek cümlelik yumuşak ders (paylaşma, renkler,
-  sayma 1-5, nezaket, el yıkama, duygulari tanima, bir hayvana yardım gibi
+- title: 70 karakterden kÄ±sa, TÃ¼rkÃ§e, merak uyandÄ±ran bir baÅŸlÄ±k.
+- description: 2-3 cÃ¼mlelik TÃ¼rkÃ§e video aÃ§Ä±klamasÄ±.
+- tags: 5-10 TÃ¼rkÃ§e/Ä°ngilizce karÄ±ÅŸÄ±k anahtar kelimeden oluÅŸan bir liste.
+- lesson: bÃ¶lÃ¼mÃ¼n verdiÄŸi tek cÃ¼mlelik yumuÅŸak ders (paylaÅŸma, renkler,
+  sayma 1-5, nezaket, el yÄ±kama, duygulari tanima, bir hayvana yardÄ±m gibi
   konulardan biri).
-- scenes: tam olarak {SCENE_COUNT} obje içeren bir liste. Her obje şu
-  anahtarlara sahip olmalı:
-  - narration_tr: sahnede Mimo ya da Pofuduk'un söylediği ya da anlatıcının
-    seslendirdiği, basit ve sıcak Türkçe metin (1-3 kısa cümle).
-  - scene_prompt_en: sadece bu sahnedeki eylemi/sahneyi tarif eden kısa bir
-    İngilizce görsel açıklama (örn: "Mimo pointing at five red apples in a
-    sunny meadow"). Karakter görünümünü tekrar tarif etme, sadece o anki
-    eylemi ve ortamı anlat.
+- scenes: tam olarak {SCENE_COUNT} obje iÃ§eren bir liste. Her obje ÅŸu
+  anahtarlara sahip olmalÄ±:
+  - narration_tr: sahnede Mimo ya da Pofuduk'un sÃ¶ylediÄŸi ya da anlatÄ±cÄ±nÄ±n
+    seslendirdiÄŸi, basit ve sÄ±cak TÃ¼rkÃ§e metin (1-3 kÄ±sa cÃ¼mle).
+  - scene_prompt_en: sadece bu sahnedeki eylemi/sahneyi tarif eden kÄ±sa bir
+    Ä°ngilizce gÃ¶rsel aÃ§Ä±klama (Ã¶rn: "Mimo pointing at five red apples in a
+    sunny meadow"). Karakter gÃ¶rÃ¼nÃ¼mÃ¼nÃ¼ tekrar tarif etme, sadece o anki
+    eylemi ve ortamÄ± anlat.
 
-Hikaye tamamen orijinal olmalı. Var olan hiçbir karaktere, markaya, şarkıya,
-ninniye ya da yaratıcıya atıfta bulunma, onları taklit etme ya da andırma.
-Şarkı sözü kullanılacaksa tamamen yeni ve özgün olsun."""
+Hikaye tamamen orijinal olmalÄ±. Var olan hiÃ§bir karaktere, markaya, ÅŸarkÄ±ya,
+ninniye ya da yaratÄ±cÄ±ya atÄ±fta bulunma, onlarÄ± taklit etme ya da andÄ±rma.
+ÅarkÄ± sÃ¶zÃ¼ kullanÄ±lacaksa tamamen yeni ve Ã¶zgÃ¼n olsun."""
     response = client.models.generate_content(
         model="gemini-flash-latest", contents=prompt,
         config=types.GenerateContentConfig(response_mime_type="application/json"),
