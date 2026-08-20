@@ -1,0 +1,42 @@
+name: Kids channel daily episode
+
+on:
+  schedule:
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: pip install -r kids-channel-automation/requirements.txt
+
+      - name: Generate and publish today's episode
+        working-directory: kids-channel-automation
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
+          YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
+          YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          PUBLISH_PRIVACY: public
+        run: python main.py --next
+
+      - name: Upload run record (for debugging/provenance)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: episode-run-${{ github.run_number }}
+          path: |
+            kids-channel-automation/runs/**/episode.json
+            kids-channel-automation/runs/**/published.json
+            kids-channel-automation/runs/**/FAILED.txt
+          retention-days: 90
+          if-no-files-found: ignore
