@@ -191,13 +191,17 @@ def probe_duration(path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def render_scene(image: Path, audio: Path, chime: Path, target: Path) -> None:
+def render_scene(image: Path, audio: Path, chime: Path, target: Path, direction: int = 1) -> None:
     width, height = IMAGE_SIZE
     duration = probe_duration(audio)
     frames = max(int(duration * 25), 25)
+    pan = 70 * direction
     zoompan = (
         f"[0:v]scale={width * 2}:{height * 2},"
-        f"zoompan=z='min(zoom+0.0012,1.15)':d={frames}:s={width}x{height}:fps=25[v]"
+        f"zoompan=z='min(zoom+0.0015,1.18)':"
+        f"x='iw/2-(iw/zoom/2)+(on/{frames})*{pan}':"
+        f"y='ih/2-(ih/zoom/2)+(on/{frames})*20':"
+        f"d={frames}:s={width}x{height}:fps=25[v]"
     )
     audio_mix = "[2:a]volume=0.5[chime];[1:a][chime]amix=inputs=2:duration=first:dropout_transition=0[aout]"
     subprocess.run(
@@ -220,6 +224,25 @@ def pick_music() -> Path | None:
     return random.choice(tracks) if tracks else None
 
 
+def synthesize_ambient_pad(duration: float, output: Path) -> Path:
+    pad = output / "ambient_pad.mp3"
+    d = f"{duration:.2f}"
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", f"sine=frequency=261.63:duration={d}",
+            "-f", "lavfi", "-i", f"sine=frequency=329.63:duration={d}",
+            "-f", "lavfi", "-i", f"sine=frequency=392.00:duration={d}",
+            "-filter_complex",
+            "[0:a][1:a][2:a]amix=inputs=3:duration=longest,"
+            "tremolo=f=0.15:d=0.4,lowpass=f=2200,volume=0.5",
+            "-ar", "44100", str(pad),
+        ],
+        check=True, capture_output=True,
+    )
+    return pad
+
+
 def compose(images: list[Path], clips: list[Path], output: Path) -> Path:
     scenes_dir = output / "scenes"
     scenes_dir.mkdir(exist_ok=True)
@@ -227,7 +250,8 @@ def compose(images: list[Path], clips: list[Path], output: Path) -> Path:
     scene_videos = []
     for index, (image, audio) in enumerate(zip(images, clips), start=1):
         target = scenes_dir / f"scene-{index:02d}.mp4"
-        render_scene(image, audio, chime, target)
+        direction = 1 if index % 2 else -1
+        render_scene(image, audio, chime, target, direction)
         scene_videos.append(target)
     list_file = output / "scenes.txt"
     list_file.write_text("".join(f"file '{clip.as_posix()}'\n" for clip in scene_videos), encoding="utf-8")
@@ -237,12 +261,15 @@ def compose(images: list[Path], clips: list[Path], output: Path) -> Path:
         check=True,
     )
     music = pick_music()
+    loop_args: list[str] = []
     if music is None:
-        return concatenated
+        music = synthesize_ambient_pad(probe_duration(concatenated), output)
+    else:
+        loop_args = ["-stream_loop", "-1"]
     final = output / "final.mp4"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-i", str(concatenated), "-stream_loop", "-1", "-i", str(music),
+            "ffmpeg", "-y", "-i", str(concatenated), *loop_args, "-i", str(music),
             "-filter_complex",
             "[1:a]volume=0.12[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[aout]",
             "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-shortest", str(final),
