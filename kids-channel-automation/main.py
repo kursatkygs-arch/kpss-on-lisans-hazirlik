@@ -32,8 +32,8 @@ BLOCKED = {
 }
 
 VISUAL_BIBLE_EN = (
-    "Original children's animation style, high-quality Pixar-like 3D render, "
-    "big expressive sparkling eyes, soft cinematic lighting, smooth glossy "
+    "Original children's animation style, high-quality animated feature "
+    "film 3D render, big expressive sparkling eyes, soft cinematic lighting, smooth glossy "
     "shading, rounded safe shapes, warm inviting palette, adorable and "
     "heart-warming mood, no text, no logos, no on-screen words. Mimo is a "
     "gentle mint-green round little creature with a yellow raincoat and a "
