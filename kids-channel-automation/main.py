@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import random
 import subprocess
 import time
 import urllib.parse
@@ -20,6 +21,7 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).parent
 RUNS = ROOT / "runs"
+MUSIC_DIR = ROOT / "music"
 SCENE_COUNT = 5
 IMAGE_SIZE = (1920, 1080)
 VOICE = "tr-TR-EmelNeural"
@@ -36,16 +38,18 @@ VISUAL_BIBLE_EN = (
     "film 3D render, big expressive sparkling eyes, soft cinematic lighting, smooth glossy "
     "shading, rounded safe shapes, warm inviting palette, adorable and "
     "heart-warming mood, no text, no logos, no on-screen words. Mimo is a "
-    "gentle mint-green round little creature with a yellow raincoat and a "
-    "tiny red backpack. Pofuduk is a small lavender cloud-puppy with "
-    "star-shaped ears. They live in a cosy village called Sunny Seed "
-    "Village."
+    "small round chubby creature with soft yellow-cream fur, small rounded "
+    "ears on top of its head, a small fluffy round pom-pom tail, blush pink "
+    "cheeks and a warm gentle smile. Pofuduk is a small lavender "
+    "cloud-puppy with star-shaped ears. They live in a cosy village called "
+    "Sunny Seed Village."
 )
 
 SERIES_BRIEF_TR = """Sen 'Mimo & Pofuduk' adlÄ±, 3-5 yaÅŸ TÃ¼rkÃ§e konuÅŸan Ã§ocuklara
-yÃ¶nelik bir Ã§izgi film serisinin senaristi ve sÃ¶z yazarÄ±sÄ±n. Mimo nazik,
-nane yeÅŸili yuvarlak bir yaratÄ±k; Pofuduk yÄ±ldÄ±z kulaklÄ±, lavanta renginde
-kÃ¼Ã§Ã¼k bir bulut kÃ¶pek. GÃ¼neÅŸli Tohum KÃ¶yÃ¼'nde yaÅŸÄ±yorlar."""
+yÃ¶nelik bir Ã§izgi film serisinin senaristi ve sÃ¶z yazarÄ±sÄ±n. Mimo tÃ¼ylÃ¼,
+sarÄ±-krem renkli, yuvarlak ve tombul, kulaklÄ± ve pofuduk kuyruklu sevimli
+bir yaratÄ±k; Pofuduk yÄ±ldÄ±z kulaklÄ±, lavanta renginde kÃ¼Ã§Ã¼k bir bulut kÃ¶pek.
+GÃ¼neÅŸli Tohum KÃ¶yÃ¼'nde yaÅŸÄ±yorlar."""
 
 
 def env(name: str) -> str:
@@ -209,6 +213,13 @@ def render_scene(image: Path, audio: Path, chime: Path, target: Path) -> None:
     )
 
 
+def pick_music() -> Path | None:
+    if not MUSIC_DIR.exists():
+        return None
+    tracks = [p for ext in ("*.mp3", "*.wav", "*.m4a") for p in MUSIC_DIR.glob(ext)]
+    return random.choice(tracks) if tracks else None
+
+
 def compose(images: list[Path], clips: list[Path], output: Path) -> Path:
     scenes_dir = output / "scenes"
     scenes_dir.mkdir(exist_ok=True)
@@ -220,9 +231,22 @@ def compose(images: list[Path], clips: list[Path], output: Path) -> Path:
         scene_videos.append(target)
     list_file = output / "scenes.txt"
     list_file.write_text("".join(f"file '{clip.as_posix()}'\n" for clip in scene_videos), encoding="utf-8")
+    concatenated = output / "concatenated.mp4"
+    subprocess.run(
+        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file), "-c", "copy", str(concatenated)],
+        check=True,
+    )
+    music = pick_music()
+    if music is None:
+        return concatenated
     final = output / "final.mp4"
     subprocess.run(
-        ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(list_file), "-c", "copy", str(final)],
+        [
+            "ffmpeg", "-y", "-i", str(concatenated), "-stream_loop", "-1", "-i", str(music),
+            "-filter_complex",
+            "[1:a]volume=0.12[bg];[0:a][bg]amix=inputs=2:duration=first:dropout_transition=0[aout]",
+            "-map", "0:v", "-map", "[aout]", "-c:v", "copy", "-c:a", "aac", "-shortest", str(final),
+        ],
         check=True,
     )
     return final
