@@ -32,12 +32,14 @@ BLOCKED = {
 }
 
 VISUAL_BIBLE_EN = (
-    "Original children's animation style, soft 3D clay-render look, rounded "
-    "safe shapes, warm daylight palette, no text, no logos, no on-screen "
-    "words. Mimo is a gentle mint-green round little creature with a yellow "
-    "raincoat and a tiny red backpack. Pofuduk is a small lavender "
-    "cloud-puppy with star-shaped ears. They live in a cosy village called "
-    "Sunny Seed Village."
+    "Original children's animation style, high-quality Pixar-like 3D render, "
+    "big expressive sparkling eyes, soft cinematic lighting, smooth glossy "
+    "shading, rounded safe shapes, warm inviting palette, adorable and "
+    "heart-warming mood, no text, no logos, no on-screen words. Mimo is a "
+    "gentle mint-green round little creature with a yellow raincoat and a "
+    "tiny red backpack. Pofuduk is a small lavender cloud-puppy with "
+    "star-shaped ears. They live in a cosy village called Sunny Seed "
+    "Village."
 )
 
 SERIES_BRIEF_TR = """Sen 'Mimo & Pofuduk' adlÄ±, 3-5 yaÅŸ TÃ¼rkÃ§e konuÅŸan Ã§ocuklara
@@ -157,6 +159,26 @@ def synthesize_narration(episode: dict, output: Path) -> list[Path]:
     return clips
 
 
+def synthesize_chime(output: Path) -> Path:
+    chime = output / "chime.mp3"
+    subprocess.run(
+        [
+            "ffmpeg", "-y",
+            "-f", "lavfi", "-i", "sine=frequency=880:duration=0.18",
+            "-f", "lavfi", "-i", "sine=frequency=1175:duration=0.18",
+            "-f", "lavfi", "-i", "sine=frequency=1568:duration=0.24",
+            "-filter_complex",
+            "[0:a]afade=t=out:st=0.11:d=0.07[a0];"
+            "[1:a]adelay=110|110,afade=t=out:st=0.11:d=0.07[a1];"
+            "[2:a]adelay=220|220,afade=t=out:st=0.14:d=0.10[a2];"
+            "[a0][a1][a2]amix=inputs=3:duration=longest,volume=6dB",
+            "-ar", "44100", str(chime),
+        ],
+        check=True, capture_output=True,
+    )
+    return chime
+
+
 def probe_duration(path: Path) -> float:
     result = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(path)],
@@ -165,20 +187,23 @@ def probe_duration(path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def render_scene(image: Path, audio: Path, target: Path) -> None:
+def render_scene(image: Path, audio: Path, chime: Path, target: Path) -> None:
     width, height = IMAGE_SIZE
     duration = probe_duration(audio)
     frames = max(int(duration * 25), 25)
     zoompan = (
-        f"scale={width * 2}:{height * 2},"
-        f"zoompan=z='min(zoom+0.0012,1.15)':d={frames}:s={width}x{height}:fps=25"
+        f"[0:v]scale={width * 2}:{height * 2},"
+        f"zoompan=z='min(zoom+0.0012,1.15)':d={frames}:s={width}x{height}:fps=25[v]"
     )
+    audio_mix = "[2:a]volume=0.5[chime];[1:a][chime]amix=inputs=2:duration=first:dropout_transition=0[aout]"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-loop", "1", "-i", str(image), "-i", str(audio),
-            "-vf", zoompan, "-c:v", "libx264", "-tune", "stillimage",
+            "ffmpeg", "-y", "-loop", "1", "-i", str(image), "-i", str(audio), "-i", str(chime),
+            "-filter_complex", f"{zoompan};{audio_mix}",
+            "-map", "[v]", "-map", "[aout]",
+            "-c:v", "libx264", "-tune", "stillimage",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
-            "-t", f"{duration:.2f}", "-shortest", str(target),
+            "-t", f"{duration:.2f}", str(target),
         ],
         check=True,
     )
@@ -187,10 +212,11 @@ def render_scene(image: Path, audio: Path, target: Path) -> None:
 def compose(images: list[Path], clips: list[Path], output: Path) -> Path:
     scenes_dir = output / "scenes"
     scenes_dir.mkdir(exist_ok=True)
+    chime = synthesize_chime(output)
     scene_videos = []
     for index, (image, audio) in enumerate(zip(images, clips), start=1):
         target = scenes_dir / f"scene-{index:02d}.mp4"
-        render_scene(image, audio, target)
+        render_scene(image, audio, chime, target)
         scene_videos.append(target)
     list_file = output / "scenes.txt"
     list_file.write_text("".join(f"file '{clip.as_posix()}'\n" for clip in scene_videos), encoding="utf-8")
