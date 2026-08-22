@@ -88,14 +88,29 @@ description, tags, lesson, scenes.
 - lesson: bölümün verdiği tek cümlelik yumuşak ders (paylaşma, renkler,
   sayma 1-5, nezaket, el yıkama, duygulari tanima, bir hayvana yardım gibi
   konulardan biri).
-- scenes: tam olarak {SCENE_COUNT} obje içeren bir liste. Her obje şu
-  anahtarlara sahip olmalı:
+Hikaye yapısı tam olarak {SCENE_COUNT} sahnede şu akışı izlemeli:
+  1. Meraklandırıcı, enerjik bir açılış.
+  2. Mimo ile Pofuduk'un karşılaştığı küçük, çocuklara uygun bir sorun ya da engel.
+  3. İkisinin birlikte denediği bir çözüm girişimi (belki ilk denemede tam
+     başaramazlar).
+  4. Coşkulu, tatmin edici bir çözüm/başarı anı.
+  5. Sıcak bir kapanış; ders (lesson) hikayenin içinde doğal şekilde
+     hissettirilir.
+
+- scenes: tam olarak {SCENE_COUNT} obje içeren bir liste (yukarıdaki 5 hikaye
+  adımıyla aynı sırada). Her obje şu anahtarlara sahip olmalı:
   - narration_tr: sahnede Mimo ya da Pofuduk'un söylediği ya da anlatıcının
     seslendirdiği, basit ve sıcak Türkçe metin (1-3 kısa cümle).
-  - scene_prompt_en: sadece bu sahnedeki eylemi/sahneyi tarif eden kısa bir
-    İngilizce görsel açıklama (örn: "Mimo pointing at five red apples in a
-    sunny meadow"). Karakter görünümünü tekrar tarif etme, sadece o anki
-    eylemi ve ortamı anlat.
+  - scene_prompt_en: bu sahnenin İLK anını tarif eden kısa, HAREKETLİ bir
+    İngilizce görsel açıklama — karakter net bir eylem içinde olsun (örn.
+    "Mimo reaching up excitedly toward a red apple on a tree branch").
+    Asla durağan/duruyor bir poz tarif etme. Karakter görünümünü tekrar
+    tarif etme, sadece o anki eylemi ve ortamı anlat.
+  - scene_prompt_en_b: aynı sahnenin hemen ardından gelen İKİNCİ anı —
+    scene_prompt_en'deki hareketin doğal devamı ya da net bir tepki/duygu
+    anı (örn. "Mimo happily hugging the apple with sparkling eyes, tiny
+    petals floating around"). Bu ikinci an ilkinden görünür şekilde farklı
+    bir poz/eylem olmalı, aynı ortamda geçmeli.
 
 Hikaye tamamen orijinal olmalı. Var olan hiçbir karaktere, markaya, şarkıya,
 ninniye ya da yaratıcıya atıfta bulunma, onları taklit etme ya da andırma.
@@ -126,25 +141,33 @@ ninniye ya da yaratıcıya atıfta bulunma, onları taklit etme ya da andırma.
     return data
 
 
-def generate_images(episode: dict, output: Path) -> list[Path]:
+def _fetch_pollinations_image(prompt: str, width: int, height: int, seed: int, target: Path) -> None:
+    url = (
+        "https://image.pollinations.ai/prompt/"
+        f"{urllib.parse.quote(prompt)}"
+        f"?width={width}&height={height}&seed={seed}&model=flux&nologo=true"
+    )
+    response = requests.get(url, timeout=180)
+    response.raise_for_status()
+    target.write_bytes(response.content)
+
+
+def generate_images(episode: dict, output: Path) -> list[tuple[Path, Path]]:
     images_dir = output / "images"
     images_dir.mkdir(exist_ok=True)
     width, height = IMAGE_SIZE
-    seed = abs(hash(episode["title"])) % 1_000_000
+    base_seed = abs(hash(episode["title"])) % 1_000_000
     images = []
     for index, scene in enumerate(episode["scenes"], start=1):
-        prompt = f"{VISUAL_BIBLE_EN} Scene: {scene['scene_prompt_en']}"
-        ensure_safe(prompt, f"scene {index} image prompt")
-        url = (
-            "https://image.pollinations.ai/prompt/"
-            f"{urllib.parse.quote(prompt)}"
-            f"?width={width}&height={height}&seed={seed}&nologo=true"
-        )
-        response = requests.get(url, timeout=180)
-        response.raise_for_status()
-        target = images_dir / f"scene-{index:02d}.jpg"
-        target.write_bytes(response.content)
-        images.append(target)
+        prompt_a = f"{VISUAL_BIBLE_EN} Scene: {scene['scene_prompt_en']}"
+        prompt_b = f"{VISUAL_BIBLE_EN} Scene: {scene['scene_prompt_en_b']}"
+        ensure_safe(prompt_a, f"scene {index} image prompt A")
+        ensure_safe(prompt_b, f"scene {index} image prompt B")
+        target_a = images_dir / f"scene-{index:02d}a.jpg"
+        target_b = images_dir / f"scene-{index:02d}b.jpg"
+        _fetch_pollinations_image(prompt_a, width, height, base_seed + index * 2, target_a)
+        _fetch_pollinations_image(prompt_b, width, height, base_seed + index * 2 + 1, target_b)
+        images.append((target_a, target_b))
     return images
 
 
@@ -192,23 +215,40 @@ def probe_duration(path: Path) -> float:
     return float(result.stdout.strip())
 
 
-def render_scene(image: Path, audio: Path, chime: Path, target: Path, direction: int = 1) -> None:
+def render_scene(
+    image_a: Path, image_b: Path, audio: Path, chime: Path, target: Path, direction: int = 1
+) -> None:
+    """Render one story beat as two zoompan'd stills crossfading mid-scene,
+    giving the character a sense of motion between two poses without any
+    paid animation tooling."""
     width, height = IMAGE_SIZE
     duration = probe_duration(audio)
-    frames = max(int(duration * 25), 25)
+    crossfade = min(0.6, duration * 0.18)
+    seg = duration / 2 + crossfade / 2
+    frames = max(int(seg * 25), 25)
     pan = 70 * direction
-    zoompan = (
-        f"[0:v]scale={width * 2}:{height * 2},"
-        f"zoompan=z='min(zoom+0.0015,1.18)':"
-        f"x='iw/2-(iw/zoom/2)+(on/{frames})*{pan}':"
-        f"y='ih/2-(ih/zoom/2)+(on/{frames})*20':"
-        f"d={frames}:s={width}x{height}:fps=25[v]"
+
+    def zoompan_chain(input_index: int, pan_amount: float) -> str:
+        return (
+            f"[{input_index}:v]scale={width * 2}:{height * 2},"
+            f"zoompan=z='min(zoom+0.002,1.22)':"
+            f"x='iw/2-(iw/zoom/2)+(on/{frames})*{pan_amount}':"
+            f"y='ih/2-(ih/zoom/2)+(on/{frames})*20':"
+            f"d={frames}:s={width}x{height}:fps=25[v{input_index}]"
+        )
+
+    filter_complex = (
+        f"{zoompan_chain(0, pan)};{zoompan_chain(1, -pan)};"
+        f"[v0][v1]xfade=transition=fade:duration={crossfade:.2f}:offset={seg - crossfade:.2f}[v];"
+        "[3:a]volume=0.5[chime];[2:a][chime]amix=inputs=2:duration=first:dropout_transition=0[aout]"
     )
-    audio_mix = "[2:a]volume=0.5[chime];[1:a][chime]amix=inputs=2:duration=first:dropout_transition=0[aout]"
     subprocess.run(
         [
-            "ffmpeg", "-y", "-loop", "1", "-i", str(image), "-i", str(audio), "-i", str(chime),
-            "-filter_complex", f"{zoompan};{audio_mix}",
+            "ffmpeg", "-y",
+            "-loop", "1", "-i", str(image_a),
+            "-loop", "1", "-i", str(image_b),
+            "-i", str(audio), "-i", str(chime),
+            "-filter_complex", filter_complex,
             "-map", "[v]", "-map", "[aout]",
             "-c:v", "libx264", "-tune", "stillimage",
             "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k",
@@ -244,15 +284,15 @@ def synthesize_ambient_pad(duration: float, output: Path) -> Path:
     return pad
 
 
-def compose(images: list[Path], clips: list[Path], output: Path) -> Path:
+def compose(images: list[tuple[Path, Path]], clips: list[Path], output: Path) -> Path:
     scenes_dir = output / "scenes"
     scenes_dir.mkdir(exist_ok=True)
     chime = synthesize_chime(output)
     scene_videos = []
-    for index, (image, audio) in enumerate(zip(images, clips), start=1):
+    for index, ((image_a, image_b), audio) in enumerate(zip(images, clips), start=1):
         target = scenes_dir / f"scene-{index:02d}.mp4"
         direction = 1 if index % 2 else -1
-        render_scene(image, audio, chime, target, direction)
+        render_scene(image_a, image_b, audio, chime, target, direction)
         scene_videos.append(target)
     list_file = output / "scenes.txt"
     list_file.write_text("".join(f"file '{clip.as_posix()}'\n" for clip in scene_videos), encoding="utf-8")
